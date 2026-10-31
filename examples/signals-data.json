@@ -1,0 +1,14 @@
+{
+  "product": "Signal",
+  "mrr": 128400,
+  "delta": 0.32,
+  "revenue": {
+    "labels": ["Apr", "May", "Jun", "Jul", "Aug", "Sep"],
+    "series": [{ "name": "MRR", "color": "#38bdf8", "points": [42000, 51000, 58000, 74000, 96000, 128400] }]
+  },
+  "retention": {
+    "labels": ["W1", "W2", "W3", "W4"],
+    "series": [{ "name": "Weekly actives", "color": "#a78bfa", "points": [1840, 2420, 3180, 4260] }]
+  },
+  "teams": ["acme", "northwind", "lumen", "vertex", "atlas", "orbit"]
+}

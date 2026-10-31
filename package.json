@@ -1,0 +1,87 @@
+{
+  "name": "takumi-motion",
+  "version": "0.9.1",
+  "description": "Deterministic server-side animation engine: any React component or raw HTML string → GIF/WebP/APNG/PNG-sequence/sprite-sheet/still at any user-given surface, rendered by Rust (takumi). v0.9.1 — data motion with the v0.9.1 motion-quality pass (rect-channel morph flight, push scene transitions): chart primitives that know the numbers (LineChart/BarChart/Donut, CountUp v2 format patterns, --data channel), measured FLIP (<Morph> + TM_LAYOUT_SHIFT), the material pack (Reveal/Mask/VariableText/GradientText), deterministic particles, the forever reel (<Banner loop> + enter=wrap byte-exact seams), and the X-ray (per-frame explain + storyboard contact sheet).",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "takumi-motion": "./dist/cli.js"
+  },
+  "exports": {
+    ".": "./dist/index.js",
+    "./react": "./dist/react/index.js",
+    "./audit": "./dist/with-audit.js",
+    "./fonts": "./dist/fonts.js",
+    "./recipes": "./dist/templates/index.js",
+    "./package.json": "./package.json",
+    "./kit": "./dist/react/kit.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "example": "tsx examples/react-banner.tsx",
+    "example:banners": "tsx examples/readme-banner.ts",
+    "cli": "tsx src/cli.ts",
+    "fixtures": "node scripts/extract-fixtures.mjs",
+    "smoke": "node smoke.mjs",
+    "proof:v04": "tsx scripts/proof-v04.mts",
+    "proof:v05": "tsx scripts/proof-v05.mts",
+    "proof:v06": "tsx scripts/proof-v06.mts"
+  },
+  "keywords": [
+    "takumi",
+    "motion",
+    "animation",
+    "engine",
+    "deterministic",
+    "server-side",
+    "gif",
+    "webp",
+    "apng",
+    "png-sequence",
+    "spritesheet",
+    "og-image",
+    "banner",
+    "react",
+    "remotion-style",
+    "spring",
+    "charts",
+    "data-visualization",
+    "morph",
+    "particles",
+    "loop",
+    "storyboard",
+    "cli"
+  ],
+  "dependencies": {
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "tsx": "^4.21.0"
+  },
+  "peerDependencies": {
+    "@takumi-rs/helpers": ">=2.17.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@takumi-rs/core": "^2.17.1",
+    "@takumi-rs/helpers": "^2.17.1",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.2.6",
+    "@types/react-dom": "^19.2.3",
+    "motion": "^14.6.0",
+    "takumi-js": "^2.17.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

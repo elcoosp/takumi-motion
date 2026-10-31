@@ -1,8 +1,8 @@
 <div align="center">
   <img src="docs/logo.png" alt="Takumi Motion Logo" width="200"/>
   <p>
-    <strong>A deterministic server-side animation engine: React components or raw HTML → GIF/WebP/APNG/PNG-sequence/sprite-sheet/still, rendered by Rust.</strong><br/>
-    Implements a complete animation pipeline with data motion, measured FLIP (<code>&lt;Morph&gt;</code>), chart primitives, deterministic particles, forever reels with byte-exact seams, and per-frame X-ray auditing. Designed for clarity, testability, and pixel-perfect reproducibility.
+    <strong>Deterministic server-side animation engine: any React component or raw HTML string → GIF/WebP/APNG/PNG-sequence/sprite-sheet/still at any user-given surface, rendered by Rust (takumi).</strong><br/>
+    v0.9.1 — data motion with chart primitives, measured FLIP (<code>&lt;Morph&gt;</code>), the material pack, deterministic particles, forever reels with byte-exact seams, and per-frame X-ray auditing.
   </p>
   <p>
     <img src="https://img.shields.io/badge/TypeScript-5.x-007ACC?style=flat-square&logo=typescript" alt="TypeScript"/>
@@ -21,7 +21,7 @@
 
 Takumi Motion is a declarative, deterministic animation engine that bridges high-level React component trees or raw HTML with high-performance, server-side rendering. By compiling animation timelines ahead of time and delegating rasterization to a Rust backend (`takumi`), it guarantees byte-exact, reproducible outputs without the runtime overhead, layout thrashing, or non-determinism of traditional browser-based animation libraries.
 
-## Key Features (v0.9.1)
+## Key Features
 
 - **Data Motion & Charts**: Deterministic chart primitives (`LineChart`, `BarChart`, `Donut`, `CountUp` v2) that react to a static data channel injected at setup, ensuring no network fetches occur during render.
 - **Measured FLIP (`<Morph>`)**: Layout truth with `TM_LAYOUT_SHIFT` auditing. Interpolates position and size channels directly during prewarm, preventing text stretching or elliptical dots common in scale-based FLIP techniques.
@@ -35,9 +35,6 @@ Takumi Motion is a declarative, deterministic animation engine that bridges high
 ```bash
 pnpm add takumi-motion
 ```
-
-> [!NOTE]
-> This engine relies on the `@takumi-rs/core` and `takumi-js` Rust bindings. Ensure your environment is configured to support native Rust binaries if you are building from source or running the CLI directly.
 
 ## Quick Start
 
@@ -56,7 +53,7 @@ export const launchBanner = defineBanner(function TakumiMotionLaunch() {
       
       <Scene duration={100} enter="rise" exit="crossfade">
         <h1 style={{ fontSize: 48, fontWeight: 700, color: "#c0caf5" }}>
-          Takumi Motion
+          takumi-motion
         </h1>
       </Scene>
     </Banner>
@@ -73,19 +70,35 @@ const report = await renderReactBanner({
 console.log(report.lint); // Review authoring lint warnings (e.g., TM_LAYOUT_SHIFT)
 ```
 
-## Core Pipeline
+## CLI Usage
 
-1. **Probe**: `<Banner>` registers metadata and scene inputs.
-2. **Plan**: `planBanner()` computes frame-exact windows for each scene.
-3. **Prewarm**: Each scene's opening frame renders once to prewarm caches (e.g., `<FitText>` measurement, `<Morph>` rect discovery). Outputs are discarded.
-4. **Frames**: The real per-frame loop generates `htmlFrames` using pure functions of the frame index.
-5. **Chunk**: Byte-identical frames are merged to optimize encoding.
-6. **Lint**: Style trees, markup, and registry findings are evaluated and attached to `report.lint`.
+The engine provides a comprehensive CLI for rendering, auditing, and scaffolding.
+
+```bash
+# Render a banner to default formats
+takumi-motion render banner.tsx --preset readme --out ./out
+
+# Render with a specific data file for chart primitives
+takumi-motion render banner.tsx --data metrics.json --format webp
+
+# Audit a banner for layout shifts and seam integrity (ideal for CI gates)
+takumi-motion check banner.tsx
+
+# Generate an engine-exact filmstrip preview (byte-deterministic)
+takumi-motion render banner.tsx --filmstrip
+
+# Preview the captured CSS in the browser (approximate layout)
+takumi-motion preview banner.tsx -o banner-preview.html
+
+# Scaffold a new banner project or list available resources
+takumi-motion init
+takumi-motion templates | presets | fonts
+```
 
 ## Development
 
-> [!TIP]
-> This project uses [`just`](https://github.com/casey/just) as a command runner and `pnpm` for package management. Ensure both are installed on your system before contributing.
+> [!NOTE]
+> This project uses `tsx` for execution and `vitest` for testing. Ensure dependencies are installed before running local scripts.
 
 ```bash
 # Install dependencies
@@ -100,11 +113,9 @@ pnpm run test
 # Run visual QA and smoke tests
 pnpm run smoke
 
-# Generate test fixtures
+# Extract test fixtures
 pnpm run fixtures
 ```
-
-For advanced workflows, benchmarking, and frame extraction, refer to the `scripts/` directory or run `just --list` to see available task runners.
 
 ## Authoring & Best Practices
 

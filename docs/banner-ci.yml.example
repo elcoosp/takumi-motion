@@ -1,0 +1,44 @@
+# CI — banner quality gate + asset build
+# Drop this in .github/workflows/banner.yml. The check command exits 1 on
+# error-level findings (extent overflow, seam energy, size budget), so an
+# overflowing, seam-popping, or oversized banner cannot merge.
+#
+# `npx takumi-motion check` also writes the rendered probe into --out, and
+# `--kit` emits the full asset set (readme GIF+WebP / retina WebP / lean GIF
+# / poster / static twin). Commit the assets directory from the same run.
+
+name: banner
+on:
+  push:
+    paths: ["banner.ts", ".github/workflows/banner.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  banner:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm i -D tsx takumi-motion
+
+      - name: Audit (extents + seam + size)
+        run: npx takumi-motion check banner.ts --preset readme --out ./assets
+
+      - name: Build the asset kit
+        run: npx takumi-motion render banner.ts --kit --out ./assets
+
+      - name: Commit refreshed assets
+        run: |
+          git config user.name "banner-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add assets
+          git diff --staged --quiet || git commit -m "chore: refresh banner assets [skip ci]"
+          git push

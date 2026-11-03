@@ -90,16 +90,41 @@ export function compileTimeline(timeline: TimelineJSON, options: CompileOptions 
   }
   const durationMs = Math.max(Math.ceil(maxEnd / frameMs) * frameMs, frameMs);
 
+  // v1.0 — the fps grid is GROUP-INDEPENDENT: build it once, share it.
+  // The baseline re-walked frameMs×frames for every (target, property-group),
+  // re-adding ~frames points per group into a fresh Set.
+  const gridPoints: number[] = [];
+  {
+    const seen = new Set<number>();
+    for (let t = 0; t <= durationMs + 1e-9; t += frameMs) {
+      const p = Math.round(t);
+      if (!seen.has(p)) {
+        seen.add(p);
+        gridPoints.push(p);
+      }
+    }
+    const last = Math.round(durationMs);
+    if (!seen.has(last)) gridPoints.push(last);
+  }
+
   const groups = groupTracks(resolvedTracks);
 
   for (const group of groups) {
     const name = `tmk-${++ruleIndex}`;
 
-    // Sample grid: fps grid over the WHOLE timeline + structural boundaries
+    // Sample grid: the shared fps grid + THIS group's structural boundaries
     // (track starts, iteration boundaries, iteration ends, track ends).
-    const points = new Set<number>();
-    for (let t = 0; t <= durationMs + 1e-9; t += frameMs) points.add(Math.round(t));
-    points.add(Math.round(durationMs));
+    const points: number[] = [...gridPoints];
+    const seen = new Set<number>(points);
+    const addPoint = (t: number): void => {
+      if (t >= 0 && t <= durationMs + 1e-9) {
+        const p = Math.round(t);
+        if (!seen.has(p)) {
+          seen.add(p);
+          points.push(p);
+        }
+      }
+    };
     for (const track of group.tracks) {
       const iteration = track.iterationMs + track.repeatDelayMs;
       const span = Number.isFinite(track.totalMs) ? track.totalMs : durationMs - track.delayMs;
@@ -108,21 +133,27 @@ export function compileTimeline(timeline: TimelineJSON, options: CompileOptions 
         Math.ceil((durationMs - track.delayMs) / iteration) + 1
       );
       for (let i = 0; i <= reps; i++) {
-        const b1 = track.delayMs + i * iteration; // iteration start
-        const b2 = b1 + track.iterationMs;        // iteration end (pre-gap hold)
-        if (b1 >= 0 && b1 <= durationMs) points.add(Math.round(b1));
-        if (b2 >= 0 && b2 <= durationMs) points.add(Math.round(b2));
+        addPoint(track.delayMs + i * iteration); // iteration start
+        addPoint(track.delayMs + i * iteration + track.iterationMs); // iteration end (pre-gap hold)
       }
-      const end = track.delayMs + bakedSpan(track);
-      if (end >= 0 && end <= durationMs) points.add(Math.round(end));
+      addPoint(track.delayMs + bakedSpan(track));
     }
-    const sortedPoints = [...points].filter((t) => t >= 0 && t <= durationMs + 1e-9).sort((a, b) => a - b);
+    points.sort((a, b) => a - b);
 
     // Emit steps; a step is dropped only when it equals BOTH neighbors
     // (linear-through). Dropping mere consecutive duplicates would erase the
     // hold-end anchor and turn every hold into a slow linear ramp across the
     // gap (the engine interpolates between the two surviving keyframes).
-    const sampled = sortedPoints.map((t) => {
+    //
+    // v1.0 — dedupe compares declarations STRUCTURALLY. The baseline
+    // JSON.stringify'd every sample point just for comparison; the declaration
+    // objects are tiny and stable-shaped, so a keyed compare is both faster
+    // and allocation-light.
+    // Sample ONCE per point into a flat array (the v1.0 draft lazily
+    // re-sampled the next point for its compare — up to 2× the sampling cost;
+    // the baseline JSON.stringify'd every point instead). Structural compare
+    // on the cached objects keeps emit-side work allocation-free.
+    const sampled: Declarations[] = points.map((t) => {
       const declarations: Declarations = {};
       if (group.isTransform) {
         const values: Partial<Record<TransformProp, number | string>> = {};
@@ -139,25 +170,24 @@ export function compileTimeline(timeline: TimelineJSON, options: CompileOptions 
         (declarations as Record<string, string>)[track.property] =
           typeof value === "number" ? cssNumberFor(track.property, value) : (value as string);
       }
-      return { t, declarations, serialized: JSON.stringify(declarations) };
+      return declarations;
     });
 
     const steps: Array<{ offset: string; style?: Declarations }> = [];
-    let lastSerialized: string | null = null;
+    let lastEmitted: Declarations | null = null;
     for (let i = 0; i < sampled.length; i++) {
-      const cur = sampled[i]!;
-      const next = sampled[i + 1];
+      const cur = sampled[i];
       const isFinal = i === sampled.length - 1;
-      const sameAsPrev = lastSerialized !== null && lastSerialized === cur.serialized;
-      const sameAsNext = next !== undefined && next.serialized === cur.serialized;
-      // A step survives when its value differs from the previously EMITTED
-      // step (start of a new segment / hold-end anchor) or when it is the
-      // final anchor point. Interior steps equal on both sides are redundant.
+      // A step survives when it differs from the last EMITTED step (segment
+      // start / hold-end anchor) or is the final anchor. Interior steps equal
+      // on BOTH sides are redundant — compare against the neighbor samples.
+      const sameAsPrev = lastEmitted !== null && declarationsEqual(cur, lastEmitted);
+      const sameAsNext = !isFinal && declarationsEqual(cur, sampled[i + 1]);
       if (sameAsPrev && (sameAsNext || isFinal) && !isFinal) continue;
-      lastSerialized = cur.serialized;
+      lastEmitted = cur;
       steps.push({
-        offset: durationMs > 0 ? `${roundToCss((cur.t / durationMs) * 100)}%` : "0%",
-        style: cur.declarations,
+        offset: durationMs > 0 ? `${roundToCss((points[i] / durationMs) * 100)}%` : "0%",
+        style: cur,
       });
     }
 
@@ -196,4 +226,15 @@ export function compileTimeline(timeline: TimelineJSON, options: CompileOptions 
     animations,
     ...(options.lint === false ? { lint: [] } : { lint: lintTracks(timeline.tracks) }),
   };
+}
+
+/** Structural equality for tiny declaration objects (1 key in practice). */
+function declarationsEqual(a: Declarations, b: Declarations): boolean {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const k of aKeys) {
+    if ((a as Record<string, string>)[k] !== (b as Record<string, string>)[k]) return false;
+  }
+  return true;
 }

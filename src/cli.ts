@@ -62,6 +62,8 @@ interface RenderArgs {
   still: boolean;
   stillFrame?: number;
   concurrency?: number;
+  /** v1.0 — worker threads for the capture stage (module banners only). */
+  workers?: number | "auto";
   // v0.8 — windowed render (output-frame subrange)
   fromFrame?: number;
   toFrame?: number;
@@ -122,6 +124,13 @@ function parseArgs(argv: string[]): RenderArgs {
         break;
       }
       case "--concurrency": args.concurrency = Number(argv[++i]); break;
+      // v1.0
+      case "--workers": {
+        const next = argv[i + 1];
+        if (next === "auto") { args.workers = "auto"; i += 1; }
+        else { args.workers = Number(next); i += 1; }
+        break;
+      }
       // v0.8
       case "--from": args.fromFrame = Number(argv[++i]); break;
       case "--to": args.toFrame = Number(argv[++i]); break;
@@ -192,6 +201,7 @@ Usage:
   Interface:
     --json            print the full report as JSON (embeddability: drive the CLI from scripts)
     --concurrency <n> bounded parallelism for parsing/measuring/frame renders (default: cores)
+    --workers <n|auto> worker threads for the capture stage (module banners; 1 = serial, auto = cores when ≥64 frames)
     --from <n> --to <n>  render only output frames [from, to) — fast partial previews (react path)
     --preview         also write a standalone HTML preview next to the output
     --filmstrip [n|f1,f2,…]  engine-exact contact sheet (real Rust-rendered stills) next to the output
@@ -238,6 +248,26 @@ function nearestTsconfigWithReactJsx(file: string): string | undefined {
 
 let tsxRegistered = false;
 
+let esbuildLoaderRegistered = false;
+
+/**
+ * v1.0 — retry a failed module load through the bundled esbuild loader
+ * (src/react/ts-worker-loader.mjs). tsx ≥ 4.21 ignores the tsconfig `jsx`
+ * setting for register()-installed hooks, so automatic-runtime JSX banner
+ * modules crash with "React is not defined" under the tsx path alone; our
+ * loader hands esbuild the tsconfig explicitly. The hooks chain AHEAD of
+ * tsx's (registered last → runs first) and short-circuit only TS/TSX/JSX
+ * files, so tsx keeps handling path aliases and everything else.
+ */
+async function loadViaEsbuildLoader(abs: string): Promise<Record<string, unknown>> {
+  const loaderUrl = new URL("./react/ts-worker-loader.mjs", import.meta.url);
+  if (!esbuildLoaderRegistered) {
+    await import(loaderUrl.href); // self-registers via registerHooks
+    esbuildLoaderRegistered = true;
+  }
+  return (await import(pathToFileURL(abs).href)) as Record<string, unknown>;
+}
+
 async function loadBannerModule(file: string, forceReact = false): Promise<LoadedBanner> {
   const abs = resolve(file);
   let mod: Record<string, unknown>;
@@ -266,14 +296,21 @@ async function loadBannerModule(file: string, forceReact = false): Promise<Loade
       throw new Error(`Loading '${file}' requires the tsx loader: npm i -D tsx`);
     }
     if (message.includes("React is not defined")) {
-      throw new Error(
-        `Loading '${file}' failed: the file uses JSX but no tsconfig.json with "jsx": "react-jsx" ` +
-        `was found from its directory up to the filesystem root. Add one (see docs/), or set TSX_TSCONFIG_PATH.`,
-      );
+      // v1.0 — tsx ≥ 4.21 ignores the tsconfig `jsx` setting for register()
+      // hooks; retry through the bundled esbuild loader (automatic JSX from
+      // the banner file's nearest tsconfig, no env vars needed).
+      const retried = await loadViaEsbuildLoader(abs);
+      return normalizeModule(retried, file, forceReact);
     }
     throw err;
   }
 
+  return await normalizeModule(mod, file, forceReact);
+}
+
+/** Module → LoadedBanner normalization (default export unwrapping, CJS
+ *  interop, factory semantics). Shared by the tsx and esbuild-loader paths. */
+async function normalizeModule(mod: Record<string, unknown>, file: string, forceReact: boolean): Promise<LoadedBanner> {
   let candidate: unknown = mod.default ?? mod.banner ?? mod.element;
   // CJS interop: a .ts file loaded from a CommonJS context wraps its default
   // export one extra level ({ default: result }). Unwrap until we see a shape.
@@ -613,6 +650,7 @@ async function runReactRender(banner: unknown, args: RenderArgs): Promise<number
 
   const report = await renderReactBanner({
     banner,
+    ...(args.workers !== undefined ? { workers: args.workers } : {}),
     preset: args.preset,
     ...(data !== undefined ? { data } : {}),
     ...(args.explain ? { explain: true } : {}),

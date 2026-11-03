@@ -13,6 +13,7 @@ import { join } from "node:path";
 import type { Renderer } from "takumi-js/node";
 import type { Node } from "@takumi-rs/helpers";
 import { mapWithConcurrency, resolveConcurrency } from "./concurrency.js";
+import { toEngineMs } from "./engine-time.js";
 
 export interface SequenceExportOptions {
   outDir: string;
@@ -134,12 +135,14 @@ export async function exportFrameSequence(
   const baseName = options.baseName ?? "frame";
   await mapWithConcurrency(runs, concurrency, async (run) => {
     const { node, timeMs } = source.renderAt(run.renderFrame);
+    // FrameSources are public — round at the engine boundary too (idempotent).
+    const engineMs = toEngineMs(timeMs);
     const png = await renderer.render(node as never, {
       width: source.width,
       height: source.height,
       devicePixelRatio: source.devicePixelRatio,
       format: "png",
-      timeMs,
+      timeMs: engineMs,
       ...(source.css.length > 0 ? { css: source.css as never } : {}),
     } as never);
 

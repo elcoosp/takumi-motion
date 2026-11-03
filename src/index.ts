@@ -63,7 +63,13 @@ export {
   transformPropOrder,
   valueToCss,
 } from "./transform.js";
+export { toEngineMs } from "./engine-time.js";
 export { resolveTrack, sampleTrackAt, TrackError, type ResolvedTrack } from "./sampler.js";
+// v1.0 — worker-pool capture
+export {
+  resolveWorkers,
+  windowGrid,
+} from "./react/parallel-capture.js";
 
 // v0.1 banner kit — seamless loops, presets, templates, render pipeline
 export {

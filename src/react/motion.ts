@@ -57,14 +57,9 @@ export function springFor(frame: number, fps: number, options: SpringAtOptions =
   const tMs = frameToMs(frame - delayFrames, fps);
   if (tMs <= 0) return from;
 
-  const springOpts: SpringOptions = {
-    ...(options as Omit<SpringAtOptions, "from" | "to" | "delayFrames" | "overshootClamping">),
-    keyframes: [from, to],
-  };
-  const gen = springGenerator(springOpts);
-  const duration = calcGeneratorDuration(gen) ?? maxGeneratorDuration;
+  const { gen, durationMs } = springSolver(options);
 
-  const { done, value } = gen.next(Math.min(tMs, duration));
+  const { done, value } = gen.next(Math.min(tMs, durationMs));
   const v = done ? to : value;
   if (options.overshootClamping && !done) {
     const lo = Math.min(from, to);
@@ -94,6 +89,67 @@ export function springFor(frame: number, fps: number, options: SpringAtOptions =
  * - stiff   — stiffness 420, damping 34  — mechanical, no bounce
  * - slow    — duration 900ms, bounce 0.05 — drifting, cinematic
  */
+// ---------------------------------------------------------------------------
+// v1.0 — the solver memo (hot path)
+//
+// springFor() used to rebuild the analytic solver and re-scan its settle
+// duration on EVERY call — per frame, per component, during capture. The
+// solver is a pure function of the transition params (fps only converts ms
+// to frames afterwards), so it memoizes perfectly: one Map lookup replaces
+// the Newton solve + up-to-400-step settle scan. springSettleFrames() and
+// the transition descriptors share the same memo.
+// ---------------------------------------------------------------------------
+
+interface SpringSolver {
+  gen: import("../spring.js").SpringGenerator;
+  /** Settle duration in ms (calcGeneratorDuration; Infinity when absurd). */
+  durationMs: number;
+}
+
+const solverCache = new Map<string, SpringSolver>();
+const SOLVER_CACHE_CAP = 512;
+
+/** Solver identity: everything that changes the closed-form solution or the
+ *  settle scan. fps/delayFrames/overshootClamping are deliberately excluded —
+ *  they only convert or clamp the SAMPLE, never the solver. */
+function solverKey(o: SpringAtOptions): string {
+  return (
+    `${o.from ?? 0}\u0000${o.to ?? 1}\u0000${o.duration ?? ""}\u0000${o.bounce ?? ""}` +
+    `\u0000${o.stiffness ?? ""}\u0000${o.damping ?? ""}\u0000${o.mass ?? ""}` +
+    `\u0000${o.visualDuration ?? ""}\u0000${o.velocity ?? ""}` +
+    `\u0000${o.restSpeed ?? ""}\u0000${o.restDelta ?? ""}`
+  );
+}
+
+/** Memoized (generator, settle duration) for a spring configuration. */
+function springSolver(options: SpringAtOptions): SpringSolver {
+  const key = solverKey(options);
+  const hit = solverCache.get(key);
+  if (hit) return hit;
+
+  const gen = springGenerator({
+    ...(options as Omit<SpringAtOptions, "from" | "to" | "delayFrames" | "overshootClamping">),
+    keyframes: [options.from ?? 0, options.to ?? 1],
+  });
+  const durationMs = calcGeneratorDuration(gen) ?? maxGeneratorDuration;
+  const solver: SpringSolver = { gen, durationMs };
+
+  if (solverCache.size >= SOLVER_CACHE_CAP) solverCache.clear();
+  solverCache.set(key, solver);
+  return solver;
+}
+
+/** Test seam: how many distinct spring configurations are memoized. */
+export function springCacheSize(): number {
+  return solverCache.size;
+}
+
+/** Test seam: drop every memoized solver (also clears the settle memo). */
+export function clearSpringCaches(): void {
+  solverCache.clear();
+  settleCache.clear();
+}
+
 export const springPresets = {
   snappy: { duration: 350, bounce: 0.12 },
   bouncy: { duration: 600, bounce: 0.45 },
@@ -120,17 +176,15 @@ const SETTLE_CACHE_CAP = 256;
  */
 export function springSettleFrames(fps: number, options: SpringAtOptions = {}): number {
   const delayFrames = options.delayFrames ?? 0;
-  const key = `${fps}\u0000${delayFrames}\u0000${options.from ?? 0}\u0000${options.to ?? 1}\u0000${options.duration ?? ""}\u0000${options.bounce ?? ""}\u0000${options.stiffness ?? ""}\u0000${options.damping ?? ""}\u0000${options.mass ?? ""}\u0000${options.visualDuration ?? ""}\u0000${options.velocity ?? ""}\u0000${options.overshootClamping ? 1 : 0}`;
+  const key = `${fps}\u0000${delayFrames}\u0000${solverKey(options)}\u0000${options.overshootClamping ? 1 : 0}`;
   const hit = settleCache.get(key);
   if (hit !== undefined) return hit;
 
-  const gen = springGenerator({
-    ...(options as Omit<SpringAtOptions, "from" | "to" | "delayFrames" | "overshootClamping">),
-    keyframes: [options.from ?? 0, options.to ?? 1],
-  });
-  const ms = calcGeneratorDuration(gen);
-  const frames = Number.isFinite(ms)
-    ? delayFrames + Math.ceil(ms / (1000 / fps))
+  // The solver memo already holds the generator + settle duration for this
+  // configuration — the settle scan ran once, not once per frame.
+  const { durationMs } = springSolver(options);
+  const frames = Number.isFinite(durationMs)
+    ? delayFrames + Math.ceil(durationMs / (1000 / fps))
     : Infinity;
 
   if (settleCache.size >= SETTLE_CACHE_CAP) settleCache.clear();

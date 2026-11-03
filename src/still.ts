@@ -36,6 +36,8 @@ import {
   type FontSpec,
 } from "./fonts.js";
 import { mapWithConcurrency, resolveConcurrency } from "./concurrency.js";
+import { toEngineMs } from "./engine-time.js";
+import { chunkIndexForFrame } from "./chunk-index.js";
 import type { ReactElementLike, TimelineJSON } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -163,8 +165,9 @@ async function renderReactStill(options: RenderStillOptions): Promise<StillResul
   for (const p of parsed) for (const entry of p.css) if (!cssSet.has(entry)) cssSet.set(entry, entry);
   const css = [...cssSet.values()];
 
-  const chunkIndex = chunkIndexForFrame(capture, frame);
-  const timeMs = Math.round((frame - capture.chunks[chunkIndex].startFrame) * frameMs * 1e3) / 1e3;
+  const chunkIndex = chunkIndexForFrame(capture.chunks, frame);
+  // Whole-ms grid — the engine's napi layer takes i64 milliseconds.
+  const timeMs = toEngineMs((frame - capture.chunks[chunkIndex].startFrame) * frameMs);
 
   const png = await renderer.render(chunkNodes[chunkIndex] as never, {
     width: device.width,
@@ -207,9 +210,9 @@ async function renderHtmlStill(options: RenderStillOptions): Promise<StillResult
   if (!Number.isInteger(frame) || frame < 0) {
     throw new Error(`renderStill: frame must be a non-negative integer, got ${frame}.`);
   }
-  // Round to microseconds — frame × frameMs accumulates float dust (15 ×
+  // Whole-ms grid — frame × frameMs accumulates float dust (15 ×
   // 1000/30 = 500.00000000000006) that would leak into reports/manifests.
-  const timeMs = Math.round(frame * frameMs * 1e3) / 1e3;
+  const timeMs = toEngineMs(frame * frameMs);
 
   const { node, css: hoisted } = await parseFragment(options.html);
   const cssSet = new Map<string, string>();
@@ -286,7 +289,7 @@ async function renderDeclarativeStill(options: RenderStillOptions): Promise<Stil
   if (!Number.isInteger(frame) || frame < 0 || frame >= totalFrames) {
     throw new Error(`renderStill: frame ${frame} outside the timeline (0..${totalFrames - 1}).`);
   }
-  const timeMs = Math.round(frame * frameMs * 1e3) / 1e3;
+  const timeMs = toEngineMs(frame * frameMs);
 
   const renderer = options.renderer ?? (await defaultRenderer());
   if (options.fonts && options.fonts.length > 0) await ensureFonts(renderer, options.fonts);
@@ -345,16 +348,6 @@ function finalize(args: {
     bytes: result.png.length,
     path,
   };
-}
-
-function chunkIndexForFrame(
-  capture: Awaited<ReturnType<typeof captureReactBanner>>,
-  frame: number,
-): number {
-  for (let i = capture.chunks.length - 1; i >= 0; i--) {
-    if (frame >= capture.chunks[i].startFrame) return i;
-  }
-  return 0;
 }
 
 async function defaultRenderer(): Promise<Renderer> {

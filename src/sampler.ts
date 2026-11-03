@@ -97,7 +97,28 @@ function resolveIterationSampler(track: TrackJSON): { iterationMs: number; sampl
 }
 
 /** Resolve a TrackJSON into a folded sampler. `base` supplies values for `null` keyframes. */
+// ---------------------------------------------------------------------------
+// v1.0 — the resolution memo (hot path)
+//
+// resolveTrack is pure and its result is expensive (generator construction +
+// a bounded settle scan for springs/inertia). Compile, evaluate, preview and
+// the loop checks all re-resolve the SAME track objects per frame/call, so
+// the resolved sampler memoizes on the track object's identity (WeakMap —
+// zero leaks when authoring code drops timelines). A caller-supplied base
+// resolver changes the result, so tracks with null keyframes + a resolver
+// resolve fresh every time (correctness over cache).
+// ---------------------------------------------------------------------------
+
+const resolveMemo = new WeakMap<TrackJSON, ResolvedTrack>();
+
 export function resolveTrack(track: TrackJSON, base?: (target: string, prop: string) => number | string | undefined): ResolvedTrack {
+  // v1.0 — memo hit: tracks WITHOUT null keyframes (or with no resolver)
+  // resolve identically every time; reuse the resolved sampler.
+  if (base === undefined) {
+    const memoHit = resolveMemo.get(track);
+    if (memoHit) return memoHit;
+  }
+
   const transition = track.transition as TransitionWithOptions;
   const delayMs = transition.delay ?? 0;
   const repeat = transition.repeat ?? 0;
@@ -159,7 +180,7 @@ export function resolveTrack(track: TrackJSON, base?: (target: string, prop: str
     return fallback;
   };
 
-  return {
+  const resolved: ResolvedTrack = {
     target: track.target,
     property: track.property,
     isTransform: isTransformProp(track.property),
@@ -175,6 +196,9 @@ export function resolveTrack(track: TrackJSON, base?: (target: string, prop: str
     // expose folded sampling through a function property
     ...({ sampleAt } as object),
   } as ResolvedTrack & { sampleAt: (localMs: number) => number | string };
+
+  if (base === undefined) resolveMemo.set(track, resolved);
+  return resolved;
 }
 
 /** Sample a resolved track at an absolute timeline time (after delay). */

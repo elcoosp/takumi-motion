@@ -22,19 +22,24 @@ export type EvaluatedStyles = Record<string, Record<string, number | string>>;
  * mirroring Motion's buildTransform.
  */
 export function evaluateAt(timeline: TimelineJSON, tMs: number, options: EvaluateOptions = {}): EvaluatedStyles {
+  // v1.0 — tracks memoize on identity (see sampler.ts), so repeated calls on
+  // the same timeline reuse the resolved samplers instead of rebuilding
+  // generators per evaluation.
   const resolved: ResolvedTrack[] = timeline.tracks.map((t) => resolveTrack(t, options.resolveBase));
   const out: EvaluatedStyles = {};
 
-  // group transform tracks per target
-  const transformPropsByTarget = new Map<string, Set<TransformProp>>();
+  // Transform tracks compose per target. The baseline re-scanned `resolved`
+  // with Array.find for every transform prop; a target-indexed map makes
+  // composition O(props) instead of O(props × tracks).
+  const transformTracksByTarget = new Map<string, Map<string, ResolvedTrack>>();
   for (const track of resolved) {
     if (!track.isTransform) continue;
-    let set = transformPropsByTarget.get(track.target);
-    if (!set) {
-      set = new Set();
-      transformPropsByTarget.set(track.target, set);
+    let byProp = transformTracksByTarget.get(track.target);
+    if (!byProp) {
+      byProp = new Map();
+      transformTracksByTarget.set(track.target, byProp);
     }
-    set.add(track.property as TransformProp);
+    if (!byProp.has(track.property)) byProp.set(track.property, track);
   }
 
   for (const track of resolved) {
@@ -51,12 +56,11 @@ export function evaluateAt(timeline: TimelineJSON, tMs: number, options: Evaluat
   }
 
   if (!options.rawTransforms) {
-    for (const [target, props] of transformPropsByTarget) {
+    for (const [target, byProp] of transformTracksByTarget) {
       const style = (out[target] ??= {});
       const values: Partial<Record<TransformProp, number | string>> = {};
-      for (const prop of props) {
-        const track = resolved.find((r) => r.target === target && r.property === prop)!;
-        values[prop] = sampleTrackAt(track, tMs - track.delayMs);
+      for (const [prop, track] of byProp) {
+        values[prop as TransformProp] = sampleTrackAt(track, tMs - track.delayMs);
       }
       style.transform = buildTransform(values);
     }

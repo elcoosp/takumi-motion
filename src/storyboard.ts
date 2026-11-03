@@ -14,6 +14,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { createElement, type ReactNode } from "react";
 import { captureReactBanner, type CaptureResult } from "./react/capture.js";
+import { chunkIndexForFrame } from "./chunk-index.js";
 import { composeFrame } from "./react/plan.js";
 import type { Renderer } from "takumi-js/node";
 
@@ -86,13 +87,6 @@ function sceneAtFrame(capture: CaptureResult, frame: number): number {
   }
 }
 
-function chunkIndexForFrame(capture: CaptureResult, frame: number): number {
-  for (let i = capture.chunks.length - 1; i >= 0; i--) {
-    if (frame >= capture.chunks[i].startFrame) return i;
-  }
-  return 0;
-}
-
 // ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
@@ -124,7 +118,7 @@ export async function renderStoryboard(options: StoryboardOptions): Promise<Stor
   const cells: StoryboardCell[] = [];
   const cellImages: Array<{ width: number; height: number; data: Uint8Array | ArrayBuffer }> = [];
   for (const frame of frames) {
-    const chunkIndex = chunkIndexForFrame(capture, frame);
+    const chunkIndex = chunkIndexForFrame(capture.chunks, frame);
     const { node } = await fromHtml(capture.chunks[chunkIndex].html);
     const timeMs = (frame - capture.chunks[chunkIndex].startFrame) * frameMs;
     const raw = (await renderer.render(node as never, {

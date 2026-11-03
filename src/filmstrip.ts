@@ -23,6 +23,8 @@ import { resolveSurface, deviceSize, type SurfaceSpec, type ResolvedSurface } fr
 import { parseFragment } from "./html-source.js";
 import { ensureFonts, type FontFileSpec, type FontSpec } from "./fonts.js";
 import { mapWithConcurrency, resolveConcurrency } from "./concurrency.js";
+import { toEngineMs } from "./engine-time.js";
+import { chunkIndexForFrame } from "./chunk-index.js";
 import { imageDataUri } from "./react/components.js";
 import type { ReactElementLike, TimelineJSON } from "./types.js";
 
@@ -151,15 +153,11 @@ export async function renderFilmstrip(options: RenderFilmstripOptions): Promise<
     const css = [...cssSet.values()];
     const device = deviceSize(surface);
 
-    const chunkFor = (frame: number): number => {
-      for (let i = capture.chunks.length - 1; i >= 0; i--) {
-        if (frame >= capture.chunks[i].startFrame) return i;
-      }
-      return 0;
-    };
+    ;
     const cells = await mapWithConcurrency(frames, concurrency, (frame) => {
-      const ci = chunkFor(frame);
-      const timeMs = Math.round((frame - capture.chunks[ci].startFrame) * frameMs * 1e3) / 1e3;
+      const ci = chunkIndexForFrame(capture.chunks, frame);
+      // Whole-ms grid — the engine's napi layer takes i64 milliseconds.
+      const timeMs = toEngineMs((frame - capture.chunks[ci].startFrame) * frameMs);
       return renderer.render(chunkNodes[ci] as never, {
         width: device.width,
         height: device.height,
@@ -199,7 +197,7 @@ export async function renderFilmstrip(options: RenderFilmstripOptions): Promise<
       : Math.max(1, Math.round(((options.durationMs ?? 1000) / 1000) * fps));
     frames = resolveFrames(options, totalFrames);
     const cells = await mapWithConcurrency(frames, concurrency, (frame) => {
-      const timeMs = Math.round(frame * frameMs * 1e3) / 1e3;
+      const timeMs = toEngineMs(frame * frameMs);
       return renderer.render(node as never, {
         width: device.width,
         height: device.height,
@@ -233,7 +231,7 @@ export async function renderFilmstrip(options: RenderFilmstripOptions): Promise<
   const totalFrames = Math.max(1, Math.round((compiled.durationMs / 1000) * fps));
   frames = resolveFrames(options, totalFrames);
   const cells = await mapWithConcurrency(frames, concurrency, (frame) => {
-    const timeMs = Math.round(frame * frameMs * 1e3) / 1e3;
+    const timeMs = toEngineMs(frame * frameMs);
     return renderer.render(node as never, {
       width: device.width,
       height: device.height,

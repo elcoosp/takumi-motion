@@ -2,7 +2,7 @@
   <img src="docs/logo.png" alt="Takumi Motion Logo" width="200"/>
   <p>
     <strong>Deterministic server-side animation engine: any React component or raw HTML string → GIF/WebP/APNG/PNG-sequence/sprite-sheet/still at any user-given surface, rendered by Rust (takumi).</strong><br/>
-    v0.9.1 — data motion with chart primitives, measured FLIP (<code>&lt;Morph&gt;</code>), the material pack, deterministic particles, forever reels with byte-exact seams, and per-frame X-ray auditing.
+    v1.0 <em>Velocity</em> — the performance pass: solver/tween/compile/evaluate memoization (geomean <strong>1.71×</strong>), binary-search chunk indexing, zero-copy GIF passes, min-SAD PNG filtering (<strong>−90%+</strong> atlas bytes), and worker-pool parallel capture — byte-identical at any worker count.
   </p>
   <p>
     <img src="https://img.shields.io/badge/TypeScript-5.x-007ACC?style=flat-square&logo=typescript" alt="TypeScript"/>
@@ -22,6 +22,15 @@
 Takumi Motion is a declarative, deterministic animation engine that bridges high-level React component trees or raw HTML with high-performance, server-side rendering. By compiling animation timelines ahead of time and delegating rasterization to a Rust backend (`takumi`), it guarantees byte-exact, reproducible outputs without the runtime overhead, layout thrashing, or non-determinism of traditional browser-based animation libraries.
 
 ## Key Features
+
+- **v1.0 Velocity (performance)**: memoized spring solvers, binary-search tween sampling,
+  structural compile dedupe, identity-memoized track resolution, zero-copy GIF hold collapse,
+  and the standard min-SAD PNG filter heuristic — geomean 1.71× across 13 benches
+  (`docs/BENCHMARKS.md`), differential-tested byte-identical against the frozen v0.9.1 pipeline.
+- **Worker-pool parallel capture**: `renderReactBanner({ bannerModule, workers: "auto" })` runs
+  the capture stage across worker threads; an adaptive gate (cores × frames × measured work)
+  only spawns when it wins.
+
 
 - **Data Motion & Charts**: Deterministic chart primitives (`LineChart`, `BarChart`, `Donut`, `CountUp` v2) that react to a static data channel injected at setup, ensuring no network fetches occur during render.
 - **Measured FLIP (`<Morph>`)**: Layout truth with `TM_LAYOUT_SHIFT` auditing. Interpolates position and size channels directly during prewarm, preventing text stretching or elliptical dots common in scale-based FLIP techniques.
@@ -68,6 +77,13 @@ const report = await renderReactBanner({
 });
 
 console.log(report.lint); // Review authoring lint warnings (e.g., TM_LAYOUT_SHIFT)
+
+// v1.0 — heavy banners: parallel capture across worker threads (byte-identical output;
+// the auto gate only spawns when cores × frames × measured work amortize it).
+const parallel = await renderReactBanner({
+  bannerModule: "./launch-banner.tsx", // module entry — the file's default export
+  workers: "auto",
+});
 ```
 
 ## CLI Usage

@@ -86,7 +86,7 @@ export function parseGif(bytes: Uint8Array): GifStructure | null {
       if (label === 0xf9) {
         // GCE: 21 F9 04 packed delay(2) transparentIdx 00
         if (bytes[bodyStart] !== 0x04 || bodyStart + 6 !== end) return null;
-        pendingGce = bytes.slice(pos, end);
+        pendingGce = bytes.subarray(pos, end);
         pendingGceStart = pos;
         pendingDelayCs = bytes[bodyStart + 2]! | (bytes[bodyStart + 3]! << 8);
       } else if (label === 0xff) {
@@ -118,7 +118,7 @@ export function parseGif(bytes: Uint8Array): GifStructure | null {
         end,
         gce: pendingGce,
         delayCs: pendingDelayCs,
-        imageData: bytes.slice(pos, end),
+        imageData: bytes.subarray(pos, end),
       });
       pendingGce = null;
       pendingGceStart = -1;
@@ -140,9 +140,9 @@ export function parseGif(bytes: Uint8Array): GifStructure | null {
   if (pendingGce) return null; // dangling GCE — malformed
 
   return {
-    prefix: bytes.slice(0, firstFrameStart),
+    prefix: bytes.subarray(0, firstFrameStart),
     frames,
-    suffix: bytes.slice(frames[frames.length - 1]!.end),
+    suffix: bytes.subarray(frames[frames.length - 1]!.end),
     ...(loopCount !== undefined ? { loopCount } : {}),
   };
 }
@@ -191,6 +191,14 @@ function framesIdentical(a: GifFrame, b: GifFrame): boolean {
     }
   }
   if (a.imageData.length !== b.imageData.length) return false;
+  // v1.0 — native memcmp for real payloads (views are zero-copy since the
+  // subarray switch); the JS loop wins below ~64 bytes (view setup cost).
+  if (a.imageData.length === 0) return true;
+  if (a.imageData.length >= 64) {
+    const ab = Buffer.from(a.imageData.buffer, a.imageData.byteOffset, a.imageData.byteLength);
+    const bb = Buffer.from(b.imageData.buffer, b.imageData.byteOffset, b.imageData.byteLength);
+    return ab.equals(bb);
+  }
   for (let k = 0; k < a.imageData.length; k++) {
     if (a.imageData[k] !== b.imageData[k]) return false;
   }

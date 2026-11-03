@@ -29,7 +29,22 @@ const hexToRgba = (hex: string): [number, number, number, number] => {
   return [r, g, b, a];
 };
 
+// v1.0 — parse memo. Scene code mixes the SAME handful of colors every frame;
+// the regex parse dominates mixColors at frame counts. Bounded Map (clear on
+// overflow) keeps it allocation-flat and deterministic.
+const PARSE_MEMO_CAP = 512;
+const parseMemo = new Map<string, [number, number, number, number] | null>();
+
 const parseToRgba = (color: string): [number, number, number, number] | null => {
+  const hit = parseMemo.get(color);
+  if (hit !== undefined) return hit;
+  const parsed = parseToRgbaUncached(color);
+  if (parseMemo.size >= PARSE_MEMO_CAP) parseMemo.clear();
+  parseMemo.set(color, parsed);
+  return parsed;
+};
+
+const parseToRgbaUncached = (color: string): [number, number, number, number] | null => {
   const str = color.trim().toLowerCase();
   if (str.startsWith("#")) return hexToRgba(str);
   const m = str.match(/^rgba?\(([^)]+)\)$/);
@@ -158,25 +173,34 @@ export function createTweenSampler(opts: TweenOptions, baseValue?: number | stri
   const timesMs = offsets.map((o) => o * opts.duration);
   const duration = opts.duration;
 
+  // v1.0 — precompute per-segment eased functions + closed-form value pairs.
+  // The baseline re-resolved the easing (closure construction for beziers)
+  // and re-tokenized colors/complex strings on EVERY sample; both are pure
+  // functions of the segment, so they bake once here.
+  const ease = opts.ease ?? "easeInOut";
+  const easings: Array<(p: number) => number> = [];
+  for (let seg = 0; seg < n - 1; seg++) easings.push(getEasingForSegment(ease, seg));
+
   return {
     duration,
     sample(tMs: number): number | string {
       if (n === 1) return filled[0];
       // interpolate() clamps by default: hold first/last value outside the range
       const t = Math.min(Math.max(tMs, timesMs[0]), timesMs[n - 1]);
-      // find segment
-      let seg = 0;
-      for (let i = 0; i < n - 1; i++) {
-        if (t >= timesMs[i] && t <= timesMs[i + 1]) {
-          seg = i;
-          break;
-        }
-        if (i === n - 2) seg = i;
+      // v1.0 — binary search for the segment (the baseline linearly scanned;
+      // O(log n) vs O(n) per sample on multi-stop tracks). Picks the LEFTMOST
+      // segment containing t, identical to the baseline's first-match scan.
+      let lo = 0;
+      let hi = n - 2;
+      while (lo < hi) {
+        const mid = (lo + hi) >> 1;
+        if (t <= timesMs[mid + 1]) hi = mid;
+        else lo = mid + 1;
       }
+      const seg = lo;
       const span = timesMs[seg + 1] - timesMs[seg];
       const local = span <= 0 ? 1 : (t - timesMs[seg]) / span;
-      const eased = getEasingForSegment(opts.ease ?? "easeInOut", seg)(local);
-      return mixValues(filled[seg], filled[seg + 1], eased);
+      return mixValues(filled[seg], filled[seg + 1], easings[seg](local));
     },
   };
 }

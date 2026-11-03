@@ -17,7 +17,13 @@ import { join, resolve } from "node:path";
 import { fromHtml } from "@takumi-rs/helpers/html";
 import type { Node } from "@takumi-rs/helpers";
 import type { MeasuredNode, Renderer } from "takumi-js/node";
-import { captureReactBanner, type CaptureResult } from "./react/capture.js";
+import {
+  captureReactBanner,
+  probeReactBanner,
+  type CaptureOptions,
+  type CaptureResult,
+} from "./react/capture.js";
+import { captureReactBannerParallel, loadBannerModule, resolveWorkers } from "./react/parallel-capture.js";
 import { bannerPresets, formatBytes, resolvePreset, type AnimationFormat, type BannerPreset } from "./presets.js";
 import { collapseGifHolds, gifStats } from "./size.js";
 import { ensureFonts, type FontLoadResult, type FontSpec } from "./fonts.js";
@@ -46,6 +52,8 @@ import { explainCapture, formatExplain, type ExplainReport } from "./explain.js"
 import { detectLayoutShifts, layoutShiftWarnings } from "./layout-shift.js";
 import { composeFrame } from "./react/plan.js";
 import { mapWithConcurrency, resolveConcurrency } from "./concurrency.js";
+import { toEngineMs } from "./engine-time.js";
+import { chunkIndexForFrame } from "./chunk-index.js";
 
 // ---------------------------------------------------------------------------
 // Options / report
@@ -100,6 +108,21 @@ export interface RenderReactBannerOptions extends SurfaceSpec {
    * doctrine forbids network fetches at render time).
    */
   data?: unknown;
+  /**
+   * v1.0 — path to a banner module (default export: element or
+   * defineBanner() component). Addresses the banner as a MODULE so the
+   * capture stage can run on worker threads.
+   */
+  bannerModule?: string;
+  /**
+   * v1.0 — worker threads for the capture stage (the one stage that was
+   * still serial; parse/audit/encode already overlap on the Rust pool).
+   * 1 = serial (default). "auto" engages cores when the banner is big
+   * enough (≥ 64 frames) to amortize spawn + prewarm. Requires
+   * `bannerModule` (elements/functions cannot cross the thread boundary).
+   * Output is byte-identical at any worker count — golden-tested.
+   */
+  workers?: number | "auto";
   /**
    * v0.9 Bet F — run the per-frame X-ray: attribute every unique frame to
    * channels (opacity/transform/clip/layout/paint/text/structure) and count
@@ -216,21 +239,42 @@ const EXT: Record<AnimationFormat, string> = { gif: "gif", webp: "webp", apng: "
 // ---------------------------------------------------------------------------
 
 export async function renderReactBanner(options: RenderReactBannerOptions): Promise<ReactBannerReport> {
-  if (options.banner === undefined || options.banner === null) {
-    throw new Error("renderReactBanner: `banner` (a React element or defineBanner() component) is required.");
+  if ((options.banner === undefined || options.banner === null) && options.bannerModule === undefined) {
+    throw new Error("renderReactBanner: `banner` (a React element or defineBanner() component) or `bannerModule` (a module path with a default export) is required.");
   }
   const pipelineT0 = performance.now();
   const concurrency = resolveConcurrency(options.concurrency);
 
   const captureT0 = performance.now();
-  const capture = await captureReactBanner(options.banner as never, {
+  const captureOptions: CaptureOptions = {
     ...(options.fps ? { fps: options.fps } : {}),
     ...(options.preset ? { preset: options.preset } : {}),
     ...(options.fonts ? { fonts: options.fonts } : {}),
     ...(options.fromFrame !== undefined ? { fromFrame: options.fromFrame } : {}),
     ...(options.toFrame !== undefined ? { toFrame: options.toFrame } : {}),
     ...(options.data !== undefined ? { data: options.data } : {}),
-  });
+  };
+
+  let capture: CaptureResult;
+  if (options.bannerModule !== undefined) {
+    if (options.banner !== undefined) {
+      throw new Error("renderReactBanner: pass `banner` OR `bannerModule`, not both.");
+    }
+    const element = await loadBannerModule(options.bannerModule);
+    // Probe once on the main thread to size the window grid (one static
+    // render). Every worker re-probes to the identical plan.
+    const probed = probeReactBanner(element as never, captureOptions, undefined as never, { errors: [] });
+    const workers = resolveWorkers(options.workers, probed.outputTotal, probed.outputTotal * probed.probeMs);
+    capture =
+      workers > 1
+        ? await captureReactBannerParallel(options.bannerModule, captureOptions, probed, workers)
+        : await captureReactBanner(element as never, captureOptions);
+  } else {
+    if (options.workers !== undefined && options.workers !== 1) {
+      throw new Error("renderReactBanner: `workers` requires `bannerModule` (elements cannot cross the thread boundary).");
+    }
+    capture = await captureReactBanner(options.banner as never, captureOptions);
+  }
   const captureMs = performance.now() - captureT0;
 
   const meta = capture.meta;
@@ -407,8 +451,8 @@ export async function renderReactBanner(options: RenderReactBannerOptions): Prom
       : (options.posters ?? (meta.loop ? [0] : [Math.min(capture.outputFrames - 1, Math.round(capture.outputFrames * 0.6))]));
   const posters: ReactBannerReport["posters"] = [];
   for (const frame of posterFrames) {
-    const chunkIndex = chunkIndexForFrame(capture, frame);
-    const timeMs = (frame - capture.chunks[chunkIndex].startFrame) * frameMs;
+    const chunkIndex = chunkIndexForFrame(capture.chunks, frame);
+    const timeMs = toEngineMs((frame - capture.chunks[chunkIndex].startFrame) * frameMs);
     const buffer = await renderer.render(chunkNodes[chunkIndex] as never, {
       width: deviceWidth,
       height: deviceHeight,
@@ -549,8 +593,8 @@ function reactFrameSource(
   const holdsStatic = !css.some((entry) => /@keyframes|animation(-name|-duration)?\s*:/i.test(entry));
   return {
     renderAt: (frame: number) => {
-      const ci = chunkIndexForFrame(capture, frame);
-      return { node: chunkNodes[ci], timeMs: (frame - capture.chunks[ci].startFrame) * frameMs };
+      const ci = chunkIndexForFrame(capture.chunks, frame);
+      return { node: chunkNodes[ci], timeMs: toEngineMs((frame - capture.chunks[ci].startFrame) * frameMs) };
     },
     css,
     frames: capture.outputFrames,
@@ -559,7 +603,7 @@ function reactFrameSource(
     width: deviceSize(surface).width,
     height: deviceSize(surface).height,
     devicePixelRatio: surface.devicePixelRatio,
-    chunkIndexForFrame: (frame: number) => chunkIndexForFrame(capture, frame),
+    chunkIndexForFrame: (frame: number) => chunkIndexForFrame(capture.chunks, frame),
     chunkKey: (ci: number) => `chunk-${ci}`,
     holdsStatic,
   };
@@ -645,13 +689,6 @@ export function formatReactReport(report: ReactBannerReport): string {
 // Chunk extent audit
 // ---------------------------------------------------------------------------
 
-function chunkIndexForFrame(capture: CaptureResult, frame: number): number {
-  for (let i = capture.chunks.length - 1; i >= 0; i--) {
-    if (frame >= capture.chunks[i].startFrame) return i;
-  }
-  return 0;
-}
-
 /**
  * Measure every unique chunk once (bounded-parallel). The trees feed BOTH
  * the extent audit and the v0.9 layout-shift lint — one measurement pass.
@@ -734,29 +771,32 @@ function walkMeasured(
   safeZone: number,
   out: ReactExtentViolation[],
 ): void {
+  // v1.0 — scalar corner math: the baseline allocated 2 arrays + 4 spread
+  // Math.min/max calls per node; this is 6 scalar ops per coordinate pair.
   const m = node.transform as Matrix;
+  const x0 = m[4];
+  const y0 = m[5];
+  const x1 = m[0] * node.width + m[4];
+  const y1 = m[1] * node.width + m[5];
+  const x2 = m[2] * node.height + m[4];
+  const y2 = m[3] * node.height + m[5];
+  const x3 = m[0] * node.width + m[2] * node.height + m[4];
+  const y3 = m[1] * node.width + m[3] * node.height + m[5];
 
-  const corners: Array<[number, number]> = [
-    [0, 0], [node.width, 0], [0, node.height], [node.width, node.height],
-  ].map(([x, y]) => [
-    m[0] * x + m[2] * y + m[4],
-    m[1] * x + m[3] * y + m[5],
-  ]);
-
-  const minX = Math.min(...corners.map((p) => p[0]));
-  const maxX = Math.max(...corners.map((p) => p[0]));
-  const minY = Math.min(...corners.map((p) => p[1]));
-  const maxY = Math.max(...corners.map((p) => p[1]));
+  const minX = Math.min(x0, x1, x2, x3);
+  const maxX = Math.max(x0, x1, x2, x3);
+  const minY = Math.min(y0, y1, y2, y3);
+  const maxY = Math.max(y0, y1, y2, y3);
 
   const hasText = node.runs.length > 0;
   const label = hasText
     ? `${path || "canvas"} text "${truncate(node.runs.map((r) => r.text).join(""))}"`
     : path || "canvas";
 
-  // Note: MeasuredTextRun x/y are CONTENT-BOX-relative, not canvas space, so
-  // extent checks use the node box — a conservative superset of its runs
-  // (taffy wraps text inside the box). Text-bearing nodes hard-fail beyond
-  // the canvas; plain boxes only warn.
+  // MeasuredTextRun x/y are CONTENT-BOX-relative, not canvas space, so extent
+  // checks use the node box — a conservative superset of its runs (taffy
+  // wraps text inside the box). Text-bearing nodes hard-fail beyond the
+  // canvas; plain boxes only warn.
   pushViolations(out, label, frame, canvas, safeZone, { minX, maxX, minY, maxY }, !hasText);
 
   node.children.forEach((child, i) => {

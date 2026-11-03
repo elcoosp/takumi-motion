@@ -10,10 +10,10 @@
 // (node:zlib deflate, filter 0, color type 6). Byte-deterministic by
 // construction: same frames ⇒ same atlas bytes.
 
-import { deflateSync } from "node:zlib";
 import type { Renderer } from "takumi-js/node";
 import type { Node } from "@takumi-rs/helpers";
 import { mapWithConcurrency, resolveConcurrency } from "./concurrency.js";
+import { toEngineMs } from "./engine-time.js";
 
 // ---------------------------------------------------------------------------
 // Minimal PNG encoder (RGBA, filter 0)
@@ -49,35 +49,8 @@ function chunk(type: string, data: Uint8Array): Buffer {
  * Deterministic: zlib deflateSync with fixed defaults — no timestamps, no
  * adaptivity. ~90 lines so the engine keeps zero runtime deps.
  */
-export function encodePngRgba(width: number, height: number, rgba: Uint8Array): Buffer {
-  if (rgba.length !== width * height * 4) {
-    throw new Error(`encodePngRgba: buffer is ${rgba.length} bytes, expected ${width * height * 4} (${width}×${height} RGBA).`);
-  }
-
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(width, 0);
-  ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8; // bit depth
-  ihdr[9] = 6; // color type RGBA
-  ihdr[10] = 0; // deflate
-  ihdr[11] = 0; // adaptive filtering
-  ihdr[12] = 0; // no interlace
-
-  // Raw scanlines with leading filter byte 0 (None).
-  const stride = width * 4;
-  const raw = Buffer.alloc((stride + 1) * height);
-  for (let y = 0; y < height; y++) {
-    raw[y * (stride + 1)] = 0;
-    Buffer.from(rgba.buffer, rgba.byteOffset + y * stride, stride).copy(raw, y * (stride + 1) + 1);
-  }
-
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), // signature
-    chunk("IHDR", ihdr),
-    chunk("IDAT", deflateSync(raw, { level: 6 })),
-    chunk("IEND", new Uint8Array(0)),
-  ]);
-}
+export { encodePngRgba, type PngEncodeOptions } from "./png.js";
+import { encodePngRgba as encodePng } from "./png.js";
 
 // ---------------------------------------------------------------------------
 // Atlas builder
@@ -224,12 +197,13 @@ export async function renderSpriteSheet(
     const window = jobs.slice(start, start + concurrency);
     const raws = await mapWithConcurrency(window, concurrency, async (job) => {
       const { node, timeMs } = source.renderAt(job.frame);
+      const engineMs = toEngineMs(timeMs);
       return renderer.render(node as never, {
         width: cellW,
         height: cellH,
         devicePixelRatio: source.devicePixelRatio,
         format: "raw",
-        timeMs,
+        timeMs: engineMs,
         ...(source.css.length > 0 ? { css: source.css as never } : {}),
       } as never);
     });
@@ -246,7 +220,7 @@ export async function renderSpriteSheet(
     }
   }
 
-  const png = encodePngRgba(atlasW, atlasH, atlas);
+  const png = encodePng(atlasW, atlasH, atlas);
   meta.css = spriteSheetCss(columns, cellCount, every, source.frameMs, cellW, cellH, atlasW);
   return { png, meta, bytes: png.length, ms: performance.now() - t0 };
 }

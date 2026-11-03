@@ -4,6 +4,7 @@
 //
 // Run: npm run example   (outputs into ./examples/output)
 
+import React from "react"; // classic-runtime scope (tsx CLI transforms JSX classic)
 import { fromJsx } from "@takumi-rs/helpers/jsx";
 import { Renderer } from "takumi-js/node";
 import { createTimeline, compileTimeline } from "../src/index.js";

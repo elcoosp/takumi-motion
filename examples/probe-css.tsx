@@ -7,6 +7,7 @@
 //   4. fontVariantNumeric: "tabular-nums"
 // Run: npx tsx examples/probe-css.tsx  → out/probe-css/*.png
 
+import React from "react"; // classic-runtime scope (tsx CLI transforms JSX classic)
 import { createElement } from "react";
 import { Banner, Scene, Fill } from "../src/react/index.js";
 import { renderReactBanner } from "../src/react-render.js";

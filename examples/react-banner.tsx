@@ -9,6 +9,7 @@
 //
 // The banner is ONE-SHOT (loop: false — a launch splash, not a loop).
 
+import React from "react"; // classic-runtime scope (tsx CLI transforms JSX classic)
 import { mkdirSync } from "node:fs";
 import { Banner, Scene, Layer, defineBanner, useCurrentFrame, useSpring, useInterpolate, useFrameState, interpolateFor } from "takumi-motion/react";
 import { renderReactBanner, formatReactReport } from "takumi-motion";

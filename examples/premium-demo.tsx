@@ -26,6 +26,7 @@
 // Outputs (plus a windowed preview render demonstrating Bet F's --from/--to):
 //   out/premium-demo.gif · .webp · posters · premium-demo-preview.gif
 
+import React from "react"; // classic-runtime scope (tsx CLI transforms JSX classic)
 import {
   Banner,
   Scene,

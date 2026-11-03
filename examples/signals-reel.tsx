@@ -24,6 +24,7 @@
 //
 // Outputs: out/signals-reel.webp (hero) · .gif · posters · storyboard.png
 
+import React from "react"; // classic-runtime scope (tsx CLI transforms JSX classic)
 import {
   Banner,
   Scene,

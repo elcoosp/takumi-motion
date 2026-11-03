@@ -18,7 +18,7 @@
 
 import { createElement, type ComponentType, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { DriverContext, type DriverRegistry } from "./context.js";
+import { DriverContext, type BannerMeta, type DriverRegistry } from "./context.js";
 import { DataContext } from "./data.js";
 import { planBanner, type BannerPlan } from "./plan.js";
 import { isReactElementValue } from "./primitives.js";
@@ -116,6 +116,86 @@ export interface CaptureResult {
 
 const CAPTURE_RANDOM_SEED = 0x74a6d1; // "takumi" flavored
 
+// ---------------------------------------------------------------------------
+// Probe + plan (v1.0 — shared with the parallel capture pool)
+// ---------------------------------------------------------------------------
+
+export interface ProbeResult {
+  registry: DriverRegistry;
+  meta: BannerMeta;
+  plan: BannerPlan;
+  fps: number;
+  theme: Theme;
+  preset: BannerPreset;
+  /** Output frames after tempo mapping (the full capture window size). */
+  outputTotal: number;
+  tempo: number;
+  /** v1.0 — steady-state per-frame render cost in ms (probe timing). The
+   *  workers:"auto" gate multiplies this by the frame count. */
+  probeMs: number;
+}
+
+type ElementFactory = (phase: "probe" | "frame", frame: number, fps: number) => ReactElement;
+
+/** Probe pass: discover <Banner> metadata + the frame-exact plan. Pure, cheap
+ *  (one static render), and deterministic — every worker window probes to the
+ *  identical plan, so the pool can size its windows on the main thread. */
+export function probeReactBanner(
+  input: ReactElement | ComponentType,
+  options: CaptureOptions = {},
+  elementFor?: ElementFactory,
+  registryOverride?: DriverRegistry,
+): ProbeResult {
+  const registry: DriverRegistry = registryOverride ?? { errors: [] };
+  const renderElement =
+    elementFor ??
+    ((phase: "probe" | "frame", frame: number, fps: number): ReactElement =>
+      createElement(
+        DriverContext.Provider,
+        { value: { phase, absoluteFrame: frame, fps, registry } },
+        createElement(
+          DataContext.Provider,
+          { value: options.data },
+          isReactElementValue(input) ? input : createElement(input as ComponentType),
+        ),
+      ));
+  // Probe render 1 = discovery (side effects into the registry). Render 2 =
+  // steady-state timing — the per-frame cost estimate behind workers:"auto"
+  // (the banner tree, fully warm, is exactly what a capture frame renders).
+  renderToStaticMarkup(renderElement("probe", 0, options.fps ?? 20));
+  const probeT0 = performance.now();
+  renderToStaticMarkup(renderElement("probe", 0, options.fps ?? 20));
+  const probeMs = performance.now() - probeT0;
+
+  const meta = registry.banner;
+  const sceneInputs = registry.sceneInputs;
+  if (!meta || !sceneInputs) {
+    throw new Error(
+      "captureReactBanner: no <Banner> found in the rendered tree. " +
+      "The default export must be a <Banner> element or a defineBanner()-marked component rendering one.",
+    );
+  }
+
+  const fps = options.fps ?? meta.fps;
+  const theme = resolveThemeByName(meta.themeName);
+  // The probe carries the RESOLVED preset object (custom presets survive).
+  const preset = (meta.preset as BannerPreset | undefined) ?? resolvePresetByName(meta.presetName, meta.width, meta.height);
+
+  const plan = planBanner(sceneInputs as never, {
+    fps,
+    defaultTransitionMs: meta.transitionMs,
+  });
+  registry.planned = plan;
+
+  const tempo = meta.tempo ?? 1;
+  if (!Number.isFinite(tempo) || tempo <= 0) {
+    throw new Error(`captureReactBanner: tempo must be a finite positive number, got ${tempo}.`);
+  }
+  const outputTotal = tempo === 1 ? plan.totalFrames : Math.ceil(plan.totalFrames / tempo);
+
+  return { registry, meta, plan, fps, theme, preset, outputTotal, tempo, probeMs };
+}
+
 export async function captureReactBanner(
   input: ReactElement | ComponentType,
   options: CaptureOptions = {},
@@ -134,40 +214,16 @@ export async function captureReactBanner(
       ),
     );
 
-  // --- 1. probe ------------------------------------------------------------
-  renderToStaticMarkup(elementFor("probe", 0, options.fps ?? 20));
-
-  const meta = registry.banner;
-  const sceneInputs = registry.sceneInputs;
-  if (!meta || !sceneInputs) {
-    throw new Error(
-      "captureReactBanner: no <Banner> found in the rendered tree. " +
-      "The default export must be a <Banner> element or a defineBanner()-marked component rendering one.",
-    );
-  }
-
-  const fps = options.fps ?? meta.fps;
-  const theme = resolveThemeByName(meta.themeName);
-  // The probe carries the RESOLVED preset object (custom presets survive).
-  const preset = (meta.preset as BannerPreset | undefined) ?? resolvePresetByName(meta.presetName, meta.width, meta.height);
-
-  // --- 2. plan -------------------------------------------------------------
-  const plan = planBanner(sceneInputs as never, {
-    fps,
-    defaultTransitionMs: meta.transitionMs,
-  });
+  // --- 1+2. probe + plan (factored so the parallel pool can size windows) --
+  const probed = probeReactBanner(input, options, elementFor, registry);
+  const { meta, plan, fps, theme, preset } = probed;
   for (const w of plan.warnings) warnings.push(w);
-  registry.planned = plan;
 
   // --- 2b. output grid (v0.8): tempo mapping + capture window --------------
   // tempo scales AUTHORING time onto OUTPUT frames: output f sees authoring
   // frame floor(f × tempo) — scenes, overlaps, layers all speed up uniformly
   // because the mapping happens HERE, before anything downstream sees a frame.
-  const tempo = meta.tempo ?? 1;
-  if (!Number.isFinite(tempo) || tempo <= 0) {
-    throw new Error(`captureReactBanner: tempo must be a finite positive number, got ${tempo}.`);
-  }
-  const outputTotal = tempo === 1 ? plan.totalFrames : Math.ceil(plan.totalFrames / tempo);
+  const { tempo, outputTotal } = probed;
   const windowFrom = Math.max(0, Math.min(options.fromFrame ?? 0, outputTotal - 1));
   const windowTo = Math.max(windowFrom + 1, Math.min(options.toFrame ?? outputTotal, outputTotal));
   if (options.fromFrame !== undefined && (!Number.isInteger(options.fromFrame) || options.fromFrame < 0)) {
@@ -179,25 +235,43 @@ export async function captureReactBanner(
 
   // --- 3. prewarm (v0.6) ---------------------------------------------------
   const htmlFrames: string[] = [];
-  const rng = mulberry32(CAPTURE_RANDOM_SEED);
   const originalRandom = Math.random;
   let randomWarned = false;
+
+  // v1.0 — the determinism shim is FRAME-SEEDED: a frame's render is a pure
+  // function of (frame, props), so accidental Math.random use produces the
+  // same value sequence for a given frame no matter which worker window (or
+  // serial pass) rendered it. This is what makes parallel capture
+  // byte-identical to serial capture at ANY window partition.
+  let activeFrame = -1;
+  let frameRng = mulberry32(CAPTURE_RANDOM_SEED);
+  const shimRandomFor = (frame: number): void => {
+    activeFrame = frame;
+    frameRng = mulberry32((CAPTURE_RANDOM_SEED ^ Math.imul(frame + 0x9e3779b1, 0x85ebca6b)) >>> 0);
+  };
   Math.random = () => {
     if (!randomWarned) {
       randomWarned = true;
       warnings.push(
-        "Math.random() was called during capture — shimmed to a seeded PRNG for determinism. " +
+        "Math.random() was called during capture — shimmed to a frame-seeded PRNG for determinism. " +
         "Use useRandom(seed) for explicit, warning-free randomness.",
       );
     }
-    return rng();
+    return frameRng();
+  };
+
+  // One frame render, shim-seeded. Both the scene sweep and the capture walk
+  // go through here so their shims see the same (frame)-seeded stream.
+  const renderSeeded = (frame: number): string => {
+    shimRandomFor(frame);
+    return renderToStaticMarkup(elementFor("frame", frame, fps));
   };
 
   try {
     if (plan.scenes.some((s) => s.durationFrames > 0)) {
       for (const scene of plan.scenes) {
         const frame = Math.max(0, Math.min(scene.startFrame, plan.totalFrames - 1));
-        renderToStaticMarkup(elementFor("frame", frame, fps));
+        renderSeeded(frame);
       }
     }
     const fitRequests = takeFitRequests(registry);
@@ -229,7 +303,7 @@ export async function captureReactBanner(
     // --- 4. frames (v0.8: windowed + tempo-mapped) -------------------------
     for (let f = windowFrom; f < windowTo; f++) {
       const authored = tempo === 1 ? f : Math.min(plan.totalFrames - 1, Math.floor(f * tempo));
-      htmlFrames.push(renderToStaticMarkup(elementFor("frame", authored, fps)));
+      htmlFrames.push(renderSeeded(authored));
     }
   } finally {
     Math.random = originalRandom;

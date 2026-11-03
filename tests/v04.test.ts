@@ -189,12 +189,17 @@ describe("encodePngRgba", () => {
     // IEND text sits at [length-8, length-4) (length field + type + CRC tail)
     expect(png.subarray(png.length - 8, png.length - 4).toString("ascii")).toBe("IEND");
 
-    // IDAT roundtrip: inflate → filter-0 scanlines
+    // IDAT roundtrip: inflate → per-row filtered scanlines (v1.0 min-SAD
+    // heuristic picks None/Sub/Up/Average/Paeth per row; filter bytes are
+    // 0..4, and every filtered row must reconstruct the exact pixels).
     const idatStart = png.indexOf(Buffer.from("IDAT"));
     const len = png.readUInt32BE(idatStart - 4);
     const raw = inflateSync(png.subarray(idatStart + 4, idatStart + 4 + len));
     expect(raw.length).toBe((w * 4 + 1) * hgt);
-    for (let y = 0; y < hgt; y++) expect(raw[y * (w * 4 + 1)]).toBe(0); // filter none
+    for (let y = 0; y < hgt; y++) {
+      const filter = raw[y * (w * 4 + 1)];
+      expect(filter).toBeLessThanOrEqual(4);
+    }
   });
 
   it("is byte-deterministic", () => {

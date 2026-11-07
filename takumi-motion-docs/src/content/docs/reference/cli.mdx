@@ -1,0 +1,99 @@
+---
+title: CLI
+description: Every takumi-motion command and flag — render, check, preview, storyboard, init, templates, presets, fonts.
+type: reference
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+The `takumi-motion` binary ships with the package (`pnpm exec takumi-motion`, `npx takumi-motion`, or `node_modules/.bin/takumi-motion`). Running it with no arguments prints usage and exits with code 1.
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `render <file>` | Render a TS/TSX/JS banner module or an `.html` file to GIF/WebP/APNG, posters, stills, sequences, or sprite sheets |
+| `check <file>` | Extent audit + loop-seam + optional size probe — the CI gate (exit 0 pass, 1 fail) |
+| `preview <file>` | Write a standalone HTML player of the captured CSS |
+| `storyboard <file.tsx>` | Labeled PNG contact sheet of the timeline (React banners) |
+| `init [dir]` | Scaffold a `banner.ts` (or `banner.tsx` with `--react`) and a `tsconfig.json`; refuses when a banner file already exists |
+| `templates` | List the built-in recipes (`typewriter`, `countup`, `sweep`, `cascade`) |
+| `presets` | List presets with size, fps, formats, and budget |
+| `fonts` | List the curated Google Font catalog by role |
+
+## Module shapes `render` accepts
+
+The loader resolves each candidate as `mod.default ?? mod.banner ?? mod.element`, then routes by shape:
+
+| Shape | Route |
+| --- | --- |
+| React element (has `$$typeof`) | React runtime |
+| `defineBanner()`-marked function | React runtime |
+| Plain sync/async function | Called and awaited; result routed to react or declarative by shape (force react with `--react`) |
+| `{ timeline, element \| node, fonts? }` | Declarative path |
+| `.html` / `.htm` file | Raw HTML path (pair with `--css`, `--font-file`) |
+
+## Flags
+
+### Surface
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--preset <name>` | `readme` | Preset recipe; explicit surface flags win over it |
+| `--width`, `--height` | preset | Logical canvas size in px |
+| `--dpr <n>` | preset | Device pixel ratio (surface ceiling: 8192 px, dpr ≤ 8) |
+| `--background <color>` | theme | CSS color or `transparent` for an alpha canvas |
+| `--fps <n>` | preset | Sampling and encoder fps |
+
+### Output
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--out`, `-o <dir>` | `./out` | Output directory (`preview` honors an `.html` path) |
+| `--format <list>` | preset | Comma-separated: `gif,webp,apng` |
+| `--quality <0-100>` | preset | WebP quality (mutually exclusive with `--lossless`) |
+| `--lossless` | false | Lossless WebP |
+| `--no-poster` | false | Skip the poster PNG |
+| `--still [frame]` | false | Single-frame PNG instead of an animation (default frame: settled ~60%) |
+| `--sequence` | false | PNG frame sequence + `frames.json` manifest |
+| `--spritesheet` | false | Sprite atlas PNG + metadata JSON |
+| `--sprite-columns <n>` | `ceil(√n)` | Atlas columns |
+| `--sprite-every <n>` | 1 | Frame stride in the atlas |
+| `--filmstrip [n\|f1,f2,…]` | false | Engine-exact contact sheet next to the outputs |
+| `--preview` | false | Also write `banner-preview.html` |
+| `--json` | false | Full report as JSON (buffers rendered as `<n bytes>`) |
+| `--quiet`, `-q` | false | Suppress the report |
+
+### Budget, data, and execution
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--budget <bytes>` | unset | Budget verdict; triggers the fps ladder (100% → 75% → 50%, floor 6 fps); exit 2 when over |
+| `--data <file>` | – | JSON data channel, read once at setup |
+| `--font-file <path>` | `[]` | Local TTF/OTF to register (repeatable; family = file stem) |
+| `--concurrency <n>` | cores, cap 8 | Bounded parallelism for parse/measure/frame stages |
+| `--workers <n\|auto>` | unset (1) | Worker threads for the capture stage (module banners only) |
+| `--from <n>` / `--to <n>` | 0 / all | Output-frame window `[from, to)` (React path) |
+| `--react` | false | Force the React runtime for unmarked function exports |
+| `--kit` | false | Full declarative asset set (`readme`, `readme-hd`, `readme-lean` + static twin) |
+| `--explain` | false | Per-frame channel attribution X-ray (React path) |
+| `--duration <frames>` | 30 | Frames for the HTML path |
+| `--css <file>` | – | Stylesheet for the HTML path |
+
+## Exit codes
+
+| Code | Raised by | Meaning |
+| --- | --- | --- |
+| `0` | all commands | Success (`check`: "OK — ship it") |
+| `1` | all commands | Error or failed audit (`check`: "FAILED — do not ship") |
+| `2` | `render --budget`, `--kit` | Output exceeded the byte budget after the ladder |
+
+<Aside type="note">
+  `check` prints extents findings per frame (warn for decorative overflow, FAIL for content), the seam verdict, and lint warnings — the same data the JSON report carries.
+</Aside>
+
+## Next steps
+
+<LinkCard title="CI Quality Gates" href="/guides/ci-quality-gates" description="A ready-made GitHub Actions job using check and budgets." />
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="The programmatic equivalents of every flag." />

@@ -1,0 +1,81 @@
+---
+title: Hooks & Motion Math
+description: Frame context hooks and their pure, hook-free companions — springs, interpolation, pulses, noise, and stagger.
+type: reference
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Hooks read the frame context inside `<Scene>` (they throw outside one). Each hook has a pure companion — the same math taking the frame explicitly — importable from the root export for use outside React.
+
+## Frame context
+
+| Hook | Returns |
+| --- | --- |
+| `useFrame()` | `FrameInfo { frame, absolute, sceneFrames, bannerFrames, fps, timeMs }` |
+| `useCurrentFrame()` | Scene-local frame (restarts per scene) |
+| `useAbsoluteFrame()` | Global banner frame |
+| `useDuration()` | Current scene's duration in frames |
+| `useFps()` | Banner fps |
+| `useCue(expr)` | Absolute frame for a cue expression: `"intro"`, `"intro+12f"` (scenes need a `label`) |
+
+## Springs and interpolation
+
+| Hook | Signature | Returns |
+| --- | --- | --- |
+| `useSpring` | `(options?: SpringAtOptions) => number` | Spring sampled at the current frame |
+| `useStaggeredSpring` | `(index, options?: StaggeredSpringOptions) => number` | Spring delayed by `startFrames + index × intervalFrames` (defaults 0/2) |
+| `useInterpolate` | `(inputFrames, output, easing?) => number` | Eased multi-stop mapping, clamped |
+| `usePulse` | `(periodFrames) => number` | Triangle 0→1→0, frame-aligned |
+| `useSmoothPulse` | `(periodFrames) => number` | Sine 0→1→0 |
+
+Spring options carry Motion's full vocabulary: `stiffness` (100), `damping` (10), `mass` (1), `duration` (800), `bounce` (0.3), `visualDuration`, `velocity`, `restSpeed`, `restDelta`, `overshootClamping`, plus `from` (0), `to` (1), `delayFrames` (0).
+
+`SpringAtOptions` fields may be functions of the frame index for per-frame retargeting.
+
+## Pure companions (root export)
+
+| Function | Signature | Notes |
+| --- | --- | --- |
+| `springFor` | `(frame, fps, options) => number` | Memoized solver (v1.0 Velocity) |
+| `interpolateFor` | `(frame, inputFrames, output, easing?) => number` | Hook-free `useInterpolate` |
+| `interpolate` | `(input, inputRange, outputRange, { easing?, extrapolateLeft?, extrapolateRight? })` | Remotion-signature mapping; monotonic, equal-length ranges |
+| `pulseFor` / `smoothPulseFor` | `(frame, periodFrames) => number` | Hook-free pulses |
+| `randomFor` | `(seed, ...salt) => number` | mulberry32-derived value in `[0, 1)`, stable per (seed, salt) |
+| `noiseFor` | `(seed, options?) => number` | 2D value noise in ± amplitude (amp 1, frequency 0.1) |
+| `staggerDelay` / `staggeredSpringFor` | `(index, ...) => ...` | Hook-free stagger |
+| `springPresets` | `snappy`, `bouncy`, `gentle`, `wobbly`, `stiff`, `slow` | Spread into any spring: `useSpring({ ...springPresets.snappy, from: 24 })` |
+| `springSettleFrames` | `(fps, options) => number` | Frames until the spring rests — `Infinity` for absurd configs |
+| `wiggleFor` | `(seed, frame, { amplitude=4, frequency=0.15 }) => number` | Hook-free `<Wiggle>` |
+| `frameToMs` / `msToFrames` | `(n, fps) => number` | `msToFrames` rounds up |
+| `mulberry32` | `(seed) => () => number` | The seeded PRNG underpinning all randomness |
+| `hashString` | `(s) => number` | String → numeric seed |
+
+## State and data
+
+| Hook | Signature | Notes |
+| --- | --- | --- |
+| `useFrameState` | `(reducer, initial, events?) => S` | State replayed from frame 0 on every render — the reducer must be deterministic; `events(frame)` returns actions or null |
+| `useChartData` | `<T>(hint?) => T` | The banner data object; throws with a key hint when absent |
+| `hasChartData` | `() => boolean` | Quiet check |
+| `useEntering` / `useExiting` | `(descriptor) => { opacity?, transform? } \| null` | `null` = settled = emit nothing |
+
+## Canonical names, intentionally distinct
+
+| Purpose | Canonical | Hook sugar | Pure companion |
+| --- | --- | --- | --- |
+| Frame-range mapping | `interpolate(frame, in, out, { easing })` | `useInterpolate(in, out, easing?)` | `interpolateFor(frame, in, out, easing?)` |
+| Spring | `useSpring(options)` | — | `springFor(frame, fps, options)` |
+| Stagger | `useStaggeredSpring(index, opts)` | — | `staggeredSpringFor(...)` |
+
+The three interpolate variants are intentionally distinct: context-free vs context-reading. Prefer `interpolate` for new code.
+
+<Aside type="caution">
+  Never call `Math.random()` in a render function. Use `useRandom`/`randomFor` (seeded) — that is what makes frames replay byte-identically and what lets worker windows merge byte-exactly.
+</Aside>
+
+## Next steps
+
+<LinkCard title="React Components" href="/reference/react-components" description="The components these hooks power." />
+
+<LinkCard title="Determinism" href="/explanation/determinism" description="Why seeded randomness and integer engine time are non-negotiable." />

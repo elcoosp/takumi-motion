@@ -1,0 +1,53 @@
+---
+title: Package Exports
+description: The subpath export map of takumi-motion — what each entry point exposes and the runtime requirements.
+type: reference
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+`takumi-motion` is ESM (`"type": "module"`), types included. React is an optional peer dependency — import the core without it.
+
+## Subpath map
+
+| Import | Exposes |
+| --- | --- |
+| `takumi-motion` | Everything: core engine (timelines, compile, evaluate, springs, easings, color), renderers (`renderBanner`, `renderReactBanner`, `renderStill`, …), the React runtime re-export, audit, fonts, themes, presets, templates, lint, surface, concurrency, storyboard, filmstrip, kit |
+| `takumi-motion/react` | The authoring surface: primitives (`Banner`, `Scene`, `Layer`), sequencing (`Sequence`, `Freeze`, `Series`, `Loop`), hooks, motion math, `SplitText`, `Fill`/`Img`/`FitText`, material pack, charts, `<Morph>`, `<Particles>`, `<Animated>`/`<Keyframes>`, `<Camera>`/`<Wiggle>`/`<FollowPath>`, enter/exit vocabulary, `chain`/`hold`, cue system, data channel |
+| `takumi-motion/audit` | `renderWithAudit` + audit types — the embeddability contract for platforms rendering user banners |
+| `takumi-motion/fonts` | `ensureFonts`, `fontCatalog`, `fontStack`, `isCatalogFont`, `loadedFontFamilies` |
+| `takumi-motion/recipes` | The four template builders, `bannerTemplates`, `buildTemplate` |
+| `takumi-motion/kit` | `CountUp`, `Typewriter`, `Glow` + number-pattern helpers |
+
+The binary is `takumi-motion` (`package.json` → `bin`), mapped to the compiled CLI.
+
+## Runtime requirements
+
+| Requirement | Detail |
+| --- | --- |
+| Node.js | 22+ (developed against 24) |
+| Engine | `@takumi-rs/core` ≥ 2.17 (peer `@takumi-rs/helpers` ≥ 2.17.0) — the Rust rasterizer arrives as a prebuilt native module |
+| React | 19 (optional peer) |
+| Fonts | takumi bundles Geist Latin by default; register anything else through the fonts API |
+
+## Types worth knowing
+
+| Type | Shape |
+| --- | --- |
+| `TimelineJSON` | `{ version: 1, durationMs, tracks: TrackJSON[], wrap? }` — the interchange format |
+| `AnimationFormat` | `"gif" \| "webp" \| "apng"` |
+| `BannerPreset` | A full surface recipe (width, height, dpr, fps, formats, quality, budget) |
+| `SurfaceSpec` | `{ width, height, dpr, fps, formats, quality, lossless, background, budgetBytes }` |
+| `TakumiStyle` | The typed, engine-verified style property set (`+` explicit `--*` custom props) |
+| `LintWarning` | `{ code, message, hint?, severity }` |
+| `ReactBannerReport` | The full render report — see [Renderers & Reports](/reference/renderers) |
+
+<Aside type="note">
+  Import types with `import type { TimelineJSON } from "takumi-motion"` — the type surface is part of the public contract and versioned with the changelog.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Core Engine API" href="/reference/core-engine" description="The functions behind the root export." />
+
+<LinkCard title="React Components" href="/reference/react-components" description="The authoring surface behind the /react export." />

@@ -1,0 +1,73 @@
+---
+title: Lint Codes
+description: Every TM_* authoring lint code — what it catches, why it matters, and the fix it hints at.
+type: reference
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Every render (`renderReactBanner`, `renderBanner`, `renderWithAudit`) carries a `lint: LintWarning[]` channel alongside the legacy `warnings: string[]`. Findings are deduplicated, capped at 20 per code (with a truncation notice), and survive `--json` — a consumer platform can render them, filter them, or fail CI on specific codes.
+
+```ts
+interface LintWarning {
+  code: LintCode;   // stable TM_* identifier
+  message: string;  // diagnosis, with the offending key/value/path
+  hint?: string;    // the fix, phrased as what to do instead
+  severity: "warn" | "info";
+}
+```
+
+## Style safety
+
+| Code | Catches | Why it matters |
+| --- | --- | --- |
+| `TM_KEBAB_STYLE` | Kebab-case keys in React style objects | React 19's unitless table is keyed on camelCase — `"font-weight": 700` renders as `font-weight:700px`, which the engine rejects (render fails with a Rust parse error). Fix: `"fontWeight"` |
+| `TM_NAN_STYLE` | `NaN` / `Infinity` / `undefined` in styles or markup | Broken springs (stiffness 0), inverted interpolate ranges — silently produces garbage styles |
+| `TM_EMPTY_STYLE` | Elements that rendered `style=""` | Every declaration was dropped upstream — usually the kebab bug or an undefined style object |
+| `TM_UNKNOWN_STYLE_PROP` | (strict mode) properties outside `SUPPORTED_STYLE_PROPS` | Advisory — the engine supports more than the curated list; verify then extend |
+
+Type-level safety pairs with the lint: `satisfies TakumiStyle` turns typos into compile errors, `UNITLESS_STYLE_PROPS` mirrors React's unitless table, and `--custom` properties go through the explicit `--*` key form.
+
+## Motion and layout
+
+| Code | Catches | Why it matters |
+| --- | --- | --- |
+| `TM_SPRING_DURATION` | Declarative tracks mixing `type: "spring"` with `duration` | Springs are solved by physics; the duration is silently ignored |
+| `TM_TRANSITION_UNSETTLED` | `<Animated>` enter/exit that cannot complete inside its scene window | Settling math is in the message; check `springSettleFrames(fps, opts) <= framesRemaining` for raw `useSpring` |
+| `TM_LAYOUT_SHIFT` | A measured box that moves inside a scene without an authored transform | The culprit sibling and delta are named. Fix: absolute park, reserved space, or fixed-width digits (`tabular-nums`, `minWidth`) |
+| `TM_MORPH_UNMEASURED` | `<Morph>` without prewarmed rects | Items jump — render through the capture runtime, which prewarms both layout states |
+| `TM_FITTEXT_UNMEASURED` | `<FitText>` without a prewarmed measurement | Fell back to `max` font size — render through the runtime or precompute with `fitFontSize()` |
+| `TM_NOISE_ALIASED` | Noise frequency above 0.5 lattice cells/frame (Nyquist) | Motion aliases into strobing — `<Camera shake>`, `<Wiggle>` |
+| `TM_VELOCITY_DROPPED` | `carryVelocity()` requested on a segment that cannot receive it | The chain loses momentum silently otherwise |
+
+## Size and output
+
+| Code | Catches | Why it matters |
+| --- | --- | --- |
+| `TM_GLOW_GIF_DITHER` | `filter: blur()` in a GIF render at dpr 1 | Palette dithering of soft gradients is the leading GIF size trap — 1× glow GIFs compressed worse than 2× in benchmarks. Prefer WebP, dpr 2, or flat accents |
+| `TM_PARTICLE_CHURN` | Unbounded particle churn or confetti without `burstFrames` / over the 24-particle budget | Size is per-frame delta × frames; a field that never settles never compresses |
+| `TM_LOOP_SEAM` | A `<Banner loop>` whose last frame differs from frame 0 (no `wrap`) | The loop visibly snaps — the hint points at `exit="wrap"` |
+| `TM_FONT_NETWORK` | Google Font specs or URL font files fetched at render | Byte-determinism holds only while the remote bytes do — vendor TTF/OTF locally |
+
+## Working with the channel
+
+```ts
+const report = await renderReactBanner({ banner: MyBanner });
+
+for (const warning of report.lint) {
+  console.log(`[${warning.severity}] ${warning.code}: ${warning.message}`);
+  if (warning.hint) console.log(`  fix: ${warning.hint}`);
+}
+```
+
+Helpers: `collectLintWarnings` dedupes, `formatLint` renders text, `camelHint` produces the kebab→camel suggestion, `NO_LINT` is the empty channel. Strict mode (unknown-property checking) is opt-in per lint call.
+
+<Aside type="tip">
+  The lint is advisory — nothing fails a render by itself. Gate on it by filtering specific codes in CI, or use `takumi-motion check` for the hard-fail audits (extents, seam, budget).
+</Aside>
+
+## Next steps
+
+<LinkCard title="Reduce File Size" href="/guides/reduce-file-size" description="Acting on the size-related codes." />
+
+<LinkCard title="CI Quality Gates" href="/guides/ci-quality-gates" description="Failing builds on extents, seam, and budgets." />

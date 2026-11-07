@@ -1,0 +1,113 @@
+---
+title: Core Engine API
+description: createTimeline, compileTimeline, evaluateAt, springs, inertia, easings, interpolation, and OKLCH color.
+type: reference
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+The root export (`takumi-motion`) exposes the authoring and evaluation core. React is an optional peer — everything on this page runs without it.
+
+## Timelines
+
+### `createTimeline(options?)` → `Timeline`
+
+```ts
+const timeline = createTimeline({ fps: 20, defaultTransition })
+  .add(target, keyframes, options)
+  .label("intro");
+```
+
+`add(target, keyframes, options?)` accepts partial records of `AnimatableProperty` → keyframes and returns `TimelineTarget` handles. Options:
+
+| Option | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `at` | `number \| "<" \| "<+n" \| "<-n" \| label` | end of previous | Position on the timeline |
+| `stagger` | `number` | `0` | Offset per target (ms) |
+| `times` | `number[]` | even | Keyframe times |
+| `delay`, `repeat`, `repeatType`, `repeatDelay` | playback | – | `repeatType: "loop" \| "reverse" \| "mirror"` |
+| transition fields | – | – | `type`, `stiffness`, `damping`, `duration`, `ease`, … |
+
+Default transitions mirror Motion: more than 2 keyframes → tween 800 ms; transforms → spring (scale 550/damped, others 500/25); everything else → tween 300 ms `ease [0.25, 0.1, 0.35, 1]`. React element targets get auto-assigned `tm-N` selector classes.
+
+`Timeline.toJSON()` produces the interchange format every renderer accepts:
+
+```ts
+interface TimelineJSON {
+  version: 1;
+  durationMs: number;
+  tracks: TrackJSON[];
+  wrap?: { selector: string };
+}
+```
+
+### Transforms
+
+| Function | Behavior |
+| --- | --- |
+| `shiftTimeline(timeline, deltaMs)` | Moves everything later; refuses negative deltas (they would clip tracks) |
+| `concatTimelines([a, b, c])` | Stacks timelines back-to-back — the data equivalent of `<Series.Sequence>` |
+| `scaleTimeline(timeline, tempo)` | Rescales tween durations (springs are not rescaled) |
+
+## Compilation and evaluation
+
+### `compileTimeline(json, { fps? = 30, resolveBase?, lint? = true })` → `CompiledTimeline`
+
+Bakes the whole timeline onto a shared fps grid and structural boundaries: CSS keyframes rules per selector, transform props merged per target, linear timing, fill both. Returns `{ css, durationMs, fps, animations, lint }` — `durationMs` is fps-grid aligned; `lint` carries authoring warnings. Renderers call this internally; bake it yourself to inspect or ship the CSS.
+
+### `evaluateAt(json, tMs, { resolveBase?, rawTransforms? })` → `EvaluatedStyles`
+
+Samples every track at time `tMs` and returns `Record<selector, Record<prop, value>>` with the composed `transform` string. This is the single-frame truth the still/filmstrip paths build on. Engine time is integer milliseconds at the boundary (`toEngineMs` clamps and floors).
+
+## Springs and inertia
+
+### `springGenerator(options)` → `SpringGenerator`
+
+| Option | Default | Notes |
+| --- | --- | --- |
+| `stiffness` | `100` | Physics mode |
+| `damping` | `10` | Physics mode |
+| `mass` | `1` | Physics mode |
+| `duration` | `800` | Time mode (ms) |
+| `bounce` | `0.3` | Time mode (0 = critically damped) |
+| `visualDuration` | – | Perceptual duration (s) — alternative to `duration` |
+| `velocity` | `0` | Initial velocity |
+| `restSpeed` / `restDelta` | Motion defaults | Settle thresholds |
+| `keyframes` | – | `[from, to]` for retargetable springs |
+
+The generator exposes `next(t)`, `velocity(t)`, `retarget(keyframes, newVelocity)`, and `calculatedDuration`. Overdamped configurations clamp (`overshootClamping`). Helpers: `calcGeneratorDuration(gen)`, `springDefaults`.
+
+### `inertiaGenerator(options)` → `InertiaGenerator`
+
+Decay-and-bounce motion: `velocity` 0, `power` 0.8, `timeConstant` 325, `bounceDamping` 10, `bounceStiffness` 500, `restDelta` 0.5, optional `min`/`max`/`modifyTarget`. Boundary catch springs keep motion inside the range.
+
+<Aside type="caution">
+  Springs are solved by physics — a `duration` on a spring track is silently ignored and trips the `TM_SPRING_DURATION` lint.
+</Aside>
+
+## Easing
+
+`Easing` namespace — React Native semantics, exact:
+
+- Curves: `linear`, `easeIn/Out/InOut`, `circIn/Out/InOut`, `backIn/Out/InOut`, `bounceIn/Out/InOut`, `anticipate`
+- Factories: `Easing.poly(n)`, `Easing.elastic(bounciness = 1)`, `Easing.back(s = 1.70158)`, `Easing.bezier(x1, y1, x2, y2)`, `Easing.steps(n, "start" | "end")`
+- Combinators: `Easing.in(f)`, `Easing.out(f)`, `Easing.inOut(f)` — base curves are in-shaped, so `in` is the identity
+
+String names (`"backOut"`, `"easeInOut"`, …) are accepted wherever an `Easing` appears; arrays are cubic beziers. `easingToCssTiming(def)` returns a CSS timing function or `null` when the curve must be baked per-frame. `getEasingForSegment(easing, i)` wraps arrays across segments.
+
+## Interpolation and color
+
+| Function | Notes |
+| --- | --- |
+| `createTweenSampler({ keyframes, times?, ease?, duration }, baseValue?)` | Per-segment easings precomputed, binary-search segment lookup (v1.0); `sample(tMs)` clamps |
+| `mixColor(from, to, t, { space? = "oklch" })` | Perceptual mix — **OKLCH is the default**, shortest hue path |
+| `interpolateColorFor(frame, inputFrames, colors, { space?, easing? })` | Multi-stop color mapping for the frame |
+| `parseColor(css)` / `rgbaToCss(rgba)` / `colorToOklch(css)` | Hex 3/4/6/8, `rgb()`, `hsl()`, 148 named colors, `transparent`; parse results memoize |
+| `mixColors` / `mixComplex` / `mixValues` | The frozen compile-path blenders — byte-determinism contract; use `color.ts` APIs for new work |
+| `buildTransform` / `isTransformProp` / `transformPropOrder` | CSS transform composition in engine order |
+
+## Next steps
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="Where TimelineJSON goes once authored." />
+
+<LinkCard title="Architecture" href="/explanation/architecture" description="How authoring, compiling, and rasterizing connect." />

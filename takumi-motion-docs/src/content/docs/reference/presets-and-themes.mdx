@@ -1,0 +1,88 @@
+---
+title: Presets, Themes & Fonts
+description: Banner presets, themes, font catalog, personalities, and the four banner templates with their props.
+type: reference
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Presets are recipes, not constraints — every field they set (width, height, dpr, fps, formats, quality, background, budget) can be overridden per render, and explicit options win.
+
+## Banner presets
+
+| Name | Size | dpr | fps | Formats | WebP quality | Budget |
+| --- | --- | --- | --- | --- | --- | --- |
+| `readme` | 850×200 | 1 | 20 | gif, webp | 82 | 2 MiB |
+| `readme-hd` | 850×200 | 2 | 20 | webp | 82 | 2 MiB |
+| `readme-lean` | 850×200 | 1 | 12 | gif | 78 | 1.25 MiB |
+| `readme-profile` | 850×300 | 1 | 20 | gif, webp | 82 | 2.25 MiB |
+| `readme-wide` | 1280×300 | 1 | 20 | gif, webp | 82 | 3 MiB |
+| `og-card` | 1200×630 | 1 | 20 | gif, webp | 85 | 4 MiB |
+
+Surface engine defaults: dpr 1, fps 30, formats `[gif, webp]`, quality 82, budget 4 MiB. Hard limits: dimension ceiling 8192 px, dpr ≤ 8, fps ≤ 120. `resolveSurface(spec, preset?)` and `resolveBackground()` implement the rules; `deviceSize()` converts logical to device pixels.
+
+## Themes
+
+Seven built-in themes, resolved over `midnight` when partial:
+
+| Name | Character |
+| --- | --- |
+| `midnight` | Default — deep blue-black, calm accent |
+| `github-dark` / `github-light` | GitHub palette pair |
+| `tokyo-night` | Blue-violet on dark (accent `#7aa2f7`, font Sora) |
+| `dracula` | Classic Dracula purples and pinks |
+| `sunburst` | Warm light theme |
+| `paper-mono` | Monochrome paper look |
+
+A `Theme` carries `{ name, bg, text, textDim, textFaint, surface, surfaceBorder, accent, glow, font? }`. Pass a partial object as `ThemeInput` to customize — missing fields complete from `midnight`.
+
+## Font catalog
+
+`ensureFonts(renderer, specs)` registers Google Fonts by name (deduped per renderer); `fontCatalog` groups the curated list:
+
+| Role | Families |
+| --- | --- |
+| display | Space Grotesk, Sora, Outfit, Manrope, Archivo, Inter |
+| mono | JetBrains Mono, IBM Plex Mono, Space Mono, Fira Code |
+| serif | Playfair Display, Lora, Fraunces |
+| body | Inter, Manrope, Noto Sans |
+
+A `FontSpec` is a family name or `{ name, weight?, style?, generic? }`. Variable fonts register with a range: `{ name: "Inter", weight: "100..900" }` — required for `<VariableText>`.
+
+For reproducible builds, vendor files locally: `loadFontFiles` accepts paths, URLs, or `Uint8Array` (TTF/OTF only — WOFF/WOFF2 are rejected). Remote fonts work but trip `TM_FONT_NETWORK` because byte-determinism holds only while the remote bytes do.
+
+## Personalities
+
+Personality presets drive easing curves, stagger, hold bias, and ambient intensity for templates and orchestration helpers:
+
+| Name | Entrance | Stagger | Ambient |
+| --- | --- | --- | --- |
+| `snappy` | backOut, spring 520/26 | 28 ms | 0.8 |
+| `smooth` | easeInOut | 42 ms | 0.6 |
+| `playful` | backOut/circIn, spring 300/17 | 34 ms | 1.0 |
+| `mechanical` | steps(8, end) / steps(6, start) | even 22 ms | 0.35 |
+
+Ambient motion helpers: `ambient(timeline, target, kind, { periodMs, intensity })` adds a mirror-cycle track (`kind: "drift" | "breathe" | "pulse" | "float"` — periods must divide the loop period exactly); `ambientWindow(...)` freezes holds between active windows. Orchestration: `splitGlyphs`, `splitWords`, `revealUnits`, `revealRow`, `waveUnits`, `deceleratingStagger`.
+
+## Banner templates
+
+The `takumi-motion/recipes` export ships four strict-seam recipes — `typewriter`, `countup`, `sweep`, `cascade` — each an async builder returning a `BannerResult { element, timeline, fonts? }`. Shared props: `theme`, `motion`, `font`, `width=850`, `height=200`, `fps=20`, `renderer?`.
+
+| Template | Own props (defaults) | Behavior |
+| --- | --- | --- |
+| `typewriter` | `text` (required), `tagline?`, `accent?`, `background?`, `speed=65` ms/char, `startMs=300`, `holdMs=1500` | Type-in with per-char fade, hold, terminal backspace, blink tail; strict loop |
+| `countup` | `stats` (required: `{ label, value, suffix?, decimals? }[]`), `title?`, `accent?`, `background?`, `steps=6`, `countMs=1200`, `startMs=450`, `holdMs=1800` | Digit-layer crossfade stat columns |
+| `sweep` | `title` (required), `subtitle?`, `secondaryColor="#22d3ee"`, `background?`, `accent?`, `holdMs=1900` | Gradient glow sweep + letter-tracking entrance, fade-out exit |
+| `cascade` | `title` (required), `tagline?`, `accent?`, `background?`, `startMs=260`, `holdMs=1700`, `rise=20` (0..48) | Per-glyph rise+fade with decelerating stagger, accent-rule overshoot, cascade exit |
+
+`buildTemplate({ name, props })` invokes by name; `bannerTemplates` lists the registry.
+
+<Aside type="note">
+  Template results already carry their fonts and theme — pass the whole result to `renderBanner` or the CLI and the renderer registers everything before measuring.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="How presets resolve at render time." />
+
+<LinkCard title="Reduce File Size" href="/guides/reduce-file-size" description="Budgets and the fps ladder in practice." />

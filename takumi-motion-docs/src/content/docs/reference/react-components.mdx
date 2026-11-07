@@ -1,0 +1,110 @@
+---
+title: React Components
+description: Props and defaults for every component in the takumi-motion/react runtime — Banner, Scene, Layer, charts, materials, particles, and more.
+type: reference
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+All components import from `takumi-motion/react` (the kinetic kit also from `takumi-motion/kit`). Every component is a pure function of the current frame — no clocks, no `Math.random`.
+
+## Structure
+
+### `<Banner>`
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `preset` | `string \| BannerPreset` | `"readme"` | Surface recipe |
+| `width`, `height` | `number` | preset | Logical canvas overrides |
+| `dpr` | `number` | preset | Device pixel ratio |
+| `background` | `string \| null` | theme bg | `"transparent"`/`null` → alpha canvas |
+| `theme` | `ThemeInput` | `"midnight"` | Theme name or partial theme |
+| `fps` | `number` | preset fps | Frames per second |
+| `fonts` | `FontSpec \| FontSpec[]` | – | Fonts registered before capture |
+| `loop` | `boolean` | `false` | Declares a loop; pair with a `wrap` transition |
+| `transitionMs` | `number` | `250` | Default scene-transition overlap |
+| `tempo` | `number` | `1` | Finite, > 0 — global timeline speedup |
+
+Children must be `<Scene>`, `<Layer>`, or `<Series>` (fragments flatten). At least one scene is required; the maximum is 64.
+
+### `<Scene>`
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `duration` | `number` | required | Frames |
+| `enter`, `exit` | `TransitionInput` | `"cut"` | `"cut" \| "crossfade" \| "slide" \| "rise" \| "push" \| "wrap"` or `{ kind, ms }` |
+| `label` | `string` | – | Unique; enables `useCue("label+12f")` |
+
+`wrap` is honored only on the last scene of a looping banner. `push` never blends — both sides must declare it.
+
+### `<Layer>`
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `top` | `boolean` | `true` when neither set | Render above the scene stack |
+| `bottom` | `boolean` | `false` | Render beneath the scene stack |
+
+## Sequencing
+
+| Component | Props | Behavior |
+| --- | --- | --- |
+| `<Sequence>` | `from=0`, `durationInFrames` (rest of scope), `speed=1`, `reverse=false` | Children render only inside the window; absolute frame tracking is preserved |
+| `<Freeze>` | `at` (required) | Children see frame `at` forever |
+| `<Series>` | children only | Flat list of `<Series.Sequence>`; nesting errors |
+| `<Series.Sequence>` | `durationInFrames` (required), `enter`/`exit="cut"` | Stacks scenes back-to-back |
+| `<Loop>` | `durationInFrames` (required ≥ 1), `times=Infinity`, children or `(iteration) => ReactNode` | Repeats its subtree; also the child's `useDuration` |
+
+## Text and content
+
+| Component | Props (defaults) | Notes |
+| --- | --- | --- |
+| `<SplitText>` | `text`, `by="chars" \| "words"`, `renderUnit` | Splits into `TextUnit`s `{text, index, total, isSpace}` |
+| `<FitText>` | `text`, `maxWidth` (canvas − 32), `fontWeight=400`, `max=64`, `min=18`, `pad=0.985` | Largest engine-measured size that fits; outside the runtime → `max` + `TM_FITTEXT_UNMEASURED` |
+| `<Fill>` | `style` | Absolute inset-0 flex container — centering works by default |
+| `<Img>` | `src` (string data URI or `Buffer`), `mime="image/png"`, `width`, `height`, `alt`, `style` | Resolve files with `imageDataUriFromFile()` before capture |
+| `<CountUp>` | `to`, `from=0`, `durationFrames` (scene), `delayFrames=0`, `spring?`, `ease="easeOut"`, `format` | Pattern grammar: `"$,.0f"`, `",.1f%"`, `"ms"`; `tabular-nums` forced |
+| `<Typewriter>` | `text`, `durationFrames` (scene − 12), `delayFrames=0`, `cursor=true`, `cursorPeriodFrames=15`, `cursorColor="currentColor"` | Cursor is an em-sized currentColor block that blinks |
+| `<Glow>` | `color="#38bdf8"`, `size=220`, `x=0`, `y=0`, `blur=44`, `opacity=0.14` | Defaults encode the size doctrine; mind `TM_GLOW_GIF_DITHER` |
+
+## Motion vocabulary
+
+| Component | Props (defaults) | Notes |
+| --- | --- | --- |
+| `<Animated>` | `entering?`, `exiting?`, `style` | Wraps a plain `div`; settles to **no** style overrides |
+| `<Keyframes>` | `frames` (`{ [frame]: { ...channels, easing? } }`), `style` | Properties fill forward; colors mix in OKLCH |
+| `<Camera>` | `pushIn?`, `pan?`, `shake?`, `transformOrigin?` | `shake` amplitude 3, frequency 0.2 — aliasing above 0.5 trips `TM_NOISE_ALIASED` |
+| `<Wiggle>` | `amplitude=4`, `seed`, `rotateAmplitude=0` | Per-frame noise offset |
+| `<FollowPath>` | `d`, `durationFrames`, `delayFrames=0`, `easing="easeInOut"`, `rotate={false \| "auto" \| number}` | Moves along an SVG path |
+| `<Morph>` | `from`, `to`, `itemIds`, `renderItem`, `switchFrame=0`, `durationFrames=14`, `staggerFrames=0`, `contentSwitchAt=0.5`, `containerStyle?`, `itemStyle?` | Measured FLIP through position+size channels — no scale, no text stretching; unmeasured → `TM_MORPH_UNMEASURED` |
+| `<Particles>` | `count=24` (≤ 256), `mode="sparkle" \| "confetti"`, `seed=1`, `colors`, `size`, `area`, `burstFrames?`, `gravity=0.35`, `speed=2.4`, `twinklePeriodFrames=16`, `opacity=0.9` | Closed-form per-frame particles; confetti without `burstFrames` trips `TM_PARTICLE_CHURN` |
+
+Enter/exit presets (26 total, e.g. `FadeInDown`, `ZoomIn`) chain with `.duration(frames)`, `.delay(frames)`, `.springify(presetOrOptions)`; `staggered(preset, index, opts)` bakes stagger; `defineTransition({ name, side, channels, durationFrames, easing })` declares custom ones. Segments compose with `chain(...)` and `hold(frames)`.
+
+## Charts
+
+| Component | Props (defaults) | Notes |
+| --- | --- | --- |
+| `<LineChart>` | `data?`, `draw="reveal" \| "none"`, `drawDurationFrames=40`, `drawDelayFrames=6`, `area=false`, `grid=true`, `showPoints`, `showLabels`, `yTicks=4`, `strokeWidth=3` | One static SVG + per-frame clip-path sweep |
+| `<BarChart>` | `data?`, `orientation="up" \| "right"`, `stagger=true`, `spring`, `showValues=true`, `formatValue`, `showLabels`, `gap=8`, `radius=6` | Bars grow with staggered springs from the measured plot box |
+| `<Donut>` | `value` (0..1, required), `size=140`, `thickness=size×0.14`, `color`, `trackColor`, `holeColor`, `paint="transform" \| "conic"`, `drawDurationFrames=36`, `center?` | `transform` is palette-safe; `conic` is the gradient alternative |
+
+Charts read the data channel via `useChartData` when the `data` prop is absent. Data shape: `ChartData = { series: [{ name, color, points }], labels?, max? }`; helpers `niceMax()`, `compactNumber()`.
+
+## Material pack
+
+| Component | Props (defaults) | Notes |
+| --- | --- | --- |
+| `<Reveal>` | `wipe="left" \| "right" \| "up" \| "down" \| "circle"` (default `"right"`), `drawDurationFrames=30`, `drawDelayFrames=0`, `feather=0` | Animated mask gradient; `feather=0` is palette-safe |
+| `<Mask>` | `image?`, `fade="top" \| "bottom" \| "left" \| "right"`, `fadeLength=24`, `mode="alpha" \| "luminance" \| "match-source"` | Exactly one of `image`/`fade` required |
+| `<VariableText>` | `text`, `from=300`, `to=800`, `durationFrames=24`, `axis="wght"`, `fontSize?` | Requires a variable font registered with a weight range |
+| `<GradientText>` | `text`, `gradient` (linear-gradient), `fontSize?`, `fontWeight?` | Static `background-clip: text` fill |
+
+<Aside type="caution">
+  The particles ship as one component: `<Particles mode="sparkle">` and `<Particles mode="confetti">`. There are no `<Sparkle>` or `<Confetti>` elements.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Hooks & Motion Math" href="/reference/hooks" description="useFrame, useSpring, useInterpolate, and the pure companions." />
+
+<LinkCard title="Lint Codes" href="/reference/lint-codes" description="What each component can warn about during capture." />

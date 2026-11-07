@@ -1,0 +1,59 @@
+---
+title: Takumi Motion
+description: Deterministic server-side animation engine — React or HTML in, GIF/WebP/APNG/sprite-sheet/still out, rendered by Rust.
+type: reference
+template: splash
+hero:
+  tagline: Any React component or raw HTML string becomes a GIF, WebP, APNG, PNG sequence, sprite sheet, or still — rendered server-side by the Rust <a href="https://github.com/nadilas/takumi">takumi</a> engine. Byte-identical output on every run, at any concurrency, on any machine.
+  title: Animation that renders like a build step
+  actions:
+    - text: Build your first banner
+      link: /tutorials/first-banner
+      icon: right-arrow
+    - text: CLI reference
+      link: /reference/cli
+      icon: external
+  image:
+    alt: Takumi Motion logo
+    file: ../../assets/logo-light.svg
+---
+
+import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
+
+Takumi Motion compiles animation timelines ahead of time, captures frames deterministically, and delegates rasterization to a Rust backend. No headless browser, no layout thrashing, no nondeterministic replays — the same input produces the same bytes, every time.
+
+## Choose your path
+
+<CardGrid stagger>
+  <Card title="Your first banner" color="#DF4D24">
+    Install the package, define a React banner, and render it to WebP in one sitting.
+  </Card>
+  <Card title="Declarative banners" color="#A8381A">
+    Skip JSX entirely — compose banner recipes from templates and render from TypeScript.
+  </Card>
+  <Card title="Automate quality gates" color="#DF4D24">
+    Wire `takumi-motion check` and byte budgets into CI so broken banners never merge.
+  </Card>
+  <Card title="Ship smaller files" color="#A8381A">
+    Use the X-ray, budget ladder, and size doctrine to cut GIF/WebP bytes by an order of magnitude.
+  </Card>
+</CardGrid>
+
+## Why Takumi Motion
+
+- **Deterministic by construction** — `Math.random` is frame-seeded, engine time is integer milliseconds, and every frame is a pure function of `(frame, props)`. Outputs are byte-identical across runs, worker counts, and machines.
+- **Rust-fast rendering** — the takumi engine rasterizes CSS-style layouts in native code. The v1.0 *Velocity* pass lifted the hot path by a geometric mean of **1.71×** across 13 benchmarks.
+- **Author in React** — banners are ordinary React trees with `<Scene>` and `<Layer>` primitives, Motion-compatible springs and easings, and frame-driven hooks.
+- **Quality tooling built in** — a coded authoring lint (`TM_*`), per-frame X-ray attribution, extent auditing, and loop-seam verification ride along with every render report.
+
+<Aside type="tip">
+  Read [Determinism](/explanation/determinism) if you have ever shipped an animated banner that rendered differently in CI than locally — Takumi Motion removes that entire class of bug.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Your First Banner" href="/tutorials/first-banner" description="A complete walkthrough from install to a rendered WebP badge." />
+
+<LinkCard title="CLI Reference" href="/reference/cli" description="Every command and flag the takumi-motion binary supports." />
+
+<LinkCard title="Architecture" href="/explanation/architecture" description="How authoring, capture, and the Rust engine fit together." />

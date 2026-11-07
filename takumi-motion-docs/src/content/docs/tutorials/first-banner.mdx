@@ -1,0 +1,152 @@
+---
+title: Your First Banner
+description: Install takumi-motion, define a React banner, and render it to a deterministic WebP in one sitting.
+type: tutorial
+---
+
+import { Steps, Tabs, TabItem, Aside, LinkCard } from '@astrojs/starlight/components';
+
+In this tutorial you build and render a React banner — the golden path for producing an animated README badge or OG card. You install the package, define scenes, render server-side to WebP, and read the render report. The whole walkthrough takes about fifteen minutes.
+
+## Prerequisites
+
+- Node.js 22 or later
+- pnpm 10 or later
+- Basic familiarity with React function components
+
+## 1. Create a project and install
+
+Create an empty directory and initialize a package:
+
+```sh
+mkdir my-banner && cd my-banner
+pnpm init
+```
+
+Install `takumi-motion`:
+
+<Tabs>
+  <TabItem label="pnpm">
+    ```sh
+    pnpm add takumi-motion
+    ```
+  </TabItem>
+  <TabItem label="npm">
+    ```sh
+    npm add takumi-motion
+    ```
+  </TabItem>
+  <TabItem label="yarn">
+    ```sh
+    yarn add takumi-motion
+    ```
+  </TabItem>
+</Tabs>
+
+<Aside type="note">
+  The package ships its own TypeScript execution path (`tsx`), so you do not need a bundler or a build config to render banners from `.tsx` files.
+</Aside>
+
+## 2. Define a banner
+
+A banner is a React component wrapped in `defineBanner`. Inside it, a `<Banner>` element declares the surface and theme, and `<Scene>` elements declare what plays and for how long. Duration units are **frames**, not seconds.
+
+Create a file named `launch-banner.tsx`:
+
+```tsx
+import { defineBanner, Banner, Scene, Layer } from "takumi-motion/react";
+import { renderReactBanner } from "takumi-motion";
+
+export const launchBanner = defineBanner(function TakumiMotionLaunch() {
+  return (
+    <Banner preset="readme" theme="tokyo-night" transitionMs={250}>
+      <Layer bottom>
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            width: 850,
+            height: 3,
+            backgroundColor: "#7aa2f7",
+          }}
+        />
+      </Layer>
+
+      <Scene duration={100} enter="rise" exit="crossfade">
+        <h1 style={{ fontSize: 48, fontWeight: 700, color: "#c0caf5" }}>
+          takumi-motion
+        </h1>
+      </Scene>
+    </Banner>
+  );
+});
+
+const report = await renderReactBanner({
+  banner: launchBanner,
+  formats: ["webp"],
+  outDir: "./out",
+});
+
+console.log(report.lint);
+```
+
+<Aside type="caution">
+  Pass `formats` (an array) and `outDir` (a directory), not `format` or a file path. The renderer picks file names from the preset and base name.
+</Aside>
+
+Three details carry the design:
+
+- `preset="readme"` selects the 850×200 @ 20 fps surface with a 2 MiB budget (see [Presets, Themes & Fonts](/reference/presets-and-themes)).
+- `<Scene duration={100}>` means 100 frames — five seconds at the preset's 20 fps.
+- `<Layer bottom>` keeps the accent rule pinned beneath the animated text.
+
+## 3. Render it
+
+Run the file with Node:
+
+```sh
+node launch-banner.tsx
+```
+
+The command prints a report and writes `./out/launch-banner.webp`:
+
+```json
+{
+  "format": "webp",
+  "bytes": 184320,
+  "withinBudget": true
+}
+```
+
+Open the file in a browser — you see the title rise in, hold, and crossfade out. The same bytes render on every machine and every run.
+
+## 4. Read the report
+
+`renderReactBanner` returns a `ReactBannerReport`. The fields you reach for most:
+
+| Field | Meaning |
+| --- | --- |
+| `files` | Written or buffered outputs: path, format, byte count, per-file budget verdict |
+| `lint` | Coded authoring warnings (`TM_*`), deduplicated, with fix hints |
+| `seam` | Loop-seam verdict (`mode: "exact"` when frame 0 equals the final frame) |
+| `timings` | Milliseconds spent in capture, parse, audit, and encode stages |
+
+A non-empty `report.lint` does not fail the render. It tells you what will cost bytes or break layout — for example `TM_KEBAB_STYLE` when a style object uses kebab-case keys that the engine rejects. See [Lint Codes](/reference/lint-codes) for the full table.
+
+## 5. Try the CLI
+
+The same banner renders from the terminal without writing a driver script:
+
+```sh
+npx takumi-motion render launch-banner.tsx --out ./out
+```
+
+The CLI accepts `--format gif,webp`, `--budget 800000`, `--filmstrip`, and more — every flag is documented in the [CLI reference](/reference/cli).
+
+## Next steps
+
+<LinkCard title="Declarative Banners" href="/tutorials/declarative-banners" description="Render banner recipes without writing React components." />
+
+<LinkCard title="CI Quality Gates" href="/guides/ci-quality-gates" description="Fail the build on layout shifts, seam breaks, or byte budgets." />
+
+<LinkCard title="React Components" href="/reference/react-components" description="Every component and prop in the runtime, with defaults." />

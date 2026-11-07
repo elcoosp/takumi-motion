@@ -1,0 +1,1823 @@
+# Takumi Motion — full documentation
+
+> Deterministic server-side animation engine: React or HTML -> GIF/WebP/APNG/PNG-sequence/sprite-sheet/still, rendered by the Rust takumi engine.
+
+## Tutorials
+
+Guided walkthroughs for first-time users.
+
+### Declarative Banners
+Source: /tutorials/declarative-banners
+
+import { Steps, Aside, Tabs, TabItem, LinkCard } from '@astrojs/starlight/components';
+
+Not every banner needs a component tree. Takumi Motion ships four deterministic banner recipes — `typewriter`, `countup`, `sweep`, and `cascade` — plus a declarative timeline API. In this tutorial you render a template-based banner from a plain TypeScript file, then emit the full multi-preset asset kit.
+
+## Prerequisites
+
+- Node.js 22 or later
+- `takumi-motion` installed (see [Your First Banner](/tutorials/first-banner) for installation)
+
+## 1. Render a template
+
+Templates are functions that return a `BannerResult` — an element plus a compiled-ready timeline. Create `release-banner.ts`:
+
+```ts
+import { gradientSweepBanner, renderBanner } from "takumi-motion";
+
+const result = await gradientSweepBanner({
+  title: "v2.4 — no more cold starts",
+  subtitle: "cold starts down 96%",
+  theme: "dracula",
+});
+
+const report = await renderBanner({
+  node: result.element,
+  timeline: result.timeline,
+  preset: "readme",
+  outDir: "./out",
+  baseName: "release",
+});
+
+console.log(report.totalBytes, report.overBudget);
+```
+
+Run it:
+
+```sh
+node release-banner.ts
+```
+
+You get `./out/release.gif` and `./out/release.webp` plus a poster PNG. The template bakes a strict loop seam, so the animation repeats without a visible cut.
+
+## 2. Understand the shared template props
+
+All four templates share the same option vocabulary (`TemplateStyleProps`):
+
+| Prop | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `theme` | `ThemeInput` | `"midnight"` | Color theme name or partial theme object |
+| `motion` | `"snappy" \| "smooth" \| "playful" \| "mechanical"` | template default | Personality preset driving easing and stagger |
+| `font` | `FontSpec` | theme default | Google Font name or spec |
+| `width` / `height` | `number` | 850 / 200 | Logical canvas size in pixels |
+| `fps` | `number` | 20 | Frames per second of the baked timeline |
+| `renderer` | `TakumiRenderer` | shared renderer | Pre-built renderer instance for reuse |
+
+Each template adds its own props — for example `typewriter` takes `text`, `tagline`, and `speed` (milliseconds per character); `countup` takes a `stats` array of `{ label, value, suffix?, decimals? }`. The full signatures live in [Presets, Themes & Fonts](/reference/presets-and-themes#banner-templates).
+
+## 3. Use the CLI for one-off renders
+
+The `render` command loads a module and renders whatever it exports — a template result, an element-plus-timeline object, or a sync/async function returning either. Create `banner-cli.ts`:
+
+```ts
+import { cascadeBanner } from "takumi-motion/recipes";
+
+export default await cascadeBanner({
+  title: "takumi-motion",
+  tagline: "deterministic banners from code",
+  accent: "#DF4D24",
+});
+```
+
+Then render it from the terminal:
+
+<Tabs>
+  <TabItem label="pnpm">
+    ```sh
+    pnpm exec takumi-motion render banner-cli.ts --preset readme-wide --out ./out
+    ```
+  </TabItem>
+  <TabItem label="npx">
+    ```sh
+    npx takumi-motion render banner-cli.ts --preset readme-wide --out ./out
+    ```
+  </TabItem>
+</Tabs>
+
+The loader resolves, in order: the module's default export, a `banner` export, then an `element` export. It accepts React elements, `defineBanner` functions, and `{ element, timeline }` template results alike.
+
+## 4. Emit the full asset kit
+
+The `--kit` flag renders a banner across several presets plus a static reduced-motion twin — the complete asset set for a project README:
+
+```sh
+pnpm exec takumi-motion render banner-cli.ts --kit --out ./assets
+```
+
+Programmatically, the same call is `renderKit`:
+
+```ts
+import { renderKit } from "takumi-motion";
+
+const kit = await renderKit(bannerResult, { outDir: "./assets" });
+console.log(kit.files); // [{ path, role }, ...]
+```
+
+The kit writes `<base>-<preset>.<ext>` files for the `readme`, `readme-hd`, and `readme-lean` presets, plus `banner-static.png`. The CLI exits with code 2 when any variant exceeds its preset's byte budget.
+
+<Aside type="caution">
+  `--kit` supports declarative banners only. The React path prints a warning and renders normally.
+</Aside>
+
+## 5. Author a custom timeline
+
+When templates do not fit, build a timeline directly. `createTimeline` mirrors Motion's API — targets, keyframes, transitions — and renderers consume its JSON form. Timeline JSON is the interchange format every render path accepts:
+
+```ts
+import { createTimeline, renderBanner, h } from "takumi-motion";
+
+const node = h("div", { style: { fontSize: 42, fontWeight: 700 } }, "ship it");
+
+const timeline = createTimeline({ fps: 20 }).add(
+  node,
+  { opacity: [0, 1], y: [-24, 0] },
+  { at: 0, duration: 600 },
+);
+
+const report = await renderBanner({
+  node,
+  timeline: timeline.toJSON(),
+  outDir: "./out",
+});
+```
+
+`renderBanner` runs `compileTimeline` internally — bake it yourself only when you need the CSS output for inspection. Timeline transforms (`shiftTimeline`, `concatTimelines`) compose longer sequences declaratively — the data equivalent of stacking scenes.
+
+## Next steps
+
+<LinkCard title="Core Engine API" href="/reference/core-engine" description="createTimeline, compileTimeline, evaluateAt, springs, easings, and color." />
+
+<LinkCard title="Reduce File Size" href="/guides/reduce-file-size" description="Budget ladders, hold collapse, and the X-ray that finds size waste." />
+
+<LinkCard title="CLI" href="/reference/cli" description="Flags for formats, budgets, sprite sheets, and frame windows." />
+
+### Your First Banner
+Source: /tutorials/first-banner
+
+import { Steps, Tabs, TabItem, Aside, LinkCard } from '@astrojs/starlight/components';
+
+In this tutorial you build and render a React banner — the golden path for producing an animated README badge or OG card. You install the package, define scenes, render server-side to WebP, and read the render report. The whole walkthrough takes about fifteen minutes.
+
+## Prerequisites
+
+- Node.js 22 or later
+- pnpm 10 or later
+- Basic familiarity with React function components
+
+## 1. Create a project and install
+
+Create an empty directory and initialize a package:
+
+```sh
+mkdir my-banner && cd my-banner
+pnpm init
+```
+
+Install `takumi-motion`:
+
+<Tabs>
+  <TabItem label="pnpm">
+    ```sh
+    pnpm add takumi-motion
+    ```
+  </TabItem>
+  <TabItem label="npm">
+    ```sh
+    npm add takumi-motion
+    ```
+  </TabItem>
+  <TabItem label="yarn">
+    ```sh
+    yarn add takumi-motion
+    ```
+  </TabItem>
+</Tabs>
+
+<Aside type="note">
+  The package ships its own TypeScript execution path (`tsx`), so you do not need a bundler or a build config to render banners from `.tsx` files.
+</Aside>
+
+## 2. Define a banner
+
+A banner is a React component wrapped in `defineBanner`. Inside it, a `<Banner>` element declares the surface and theme, and `<Scene>` elements declare what plays and for how long. Duration units are **frames**, not seconds.
+
+Create a file named `launch-banner.tsx`:
+
+```tsx
+import { defineBanner, Banner, Scene, Layer } from "takumi-motion/react";
+import { renderReactBanner } from "takumi-motion";
+
+export const launchBanner = defineBanner(function TakumiMotionLaunch() {
+  return (
+    <Banner preset="readme" theme="tokyo-night" transitionMs={250}>
+      <Layer bottom>
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            width: 850,
+            height: 3,
+            backgroundColor: "#7aa2f7",
+          }}
+        />
+      </Layer>
+
+      <Scene duration={100} enter="rise" exit="crossfade">
+        <h1 style={{ fontSize: 48, fontWeight: 700, color: "#c0caf5" }}>
+          takumi-motion
+        </h1>
+      </Scene>
+    </Banner>
+  );
+});
+
+const report = await renderReactBanner({
+  banner: launchBanner,
+  formats: ["webp"],
+  outDir: "./out",
+});
+
+console.log(report.lint);
+```
+
+<Aside type="caution">
+  Pass `formats` (an array) and `outDir` (a directory), not `format` or a file path. The renderer picks file names from the preset and base name.
+</Aside>
+
+Three details carry the design:
+
+- `preset="readme"` selects the 850×200 @ 20 fps surface with a 2 MiB budget (see [Presets, Themes & Fonts](/reference/presets-and-themes)).
+- `<Scene duration={100}>` means 100 frames — five seconds at the preset's 20 fps.
+- `<Layer bottom>` keeps the accent rule pinned beneath the animated text.
+
+## 3. Render it
+
+Run the file with Node:
+
+```sh
+node launch-banner.tsx
+```
+
+The command prints a report and writes `./out/launch-banner.webp`:
+
+```json
+{
+  "format": "webp",
+  "bytes": 184320,
+  "withinBudget": true
+}
+```
+
+Open the file in a browser — you see the title rise in, hold, and crossfade out. The same bytes render on every machine and every run.
+
+## 4. Read the report
+
+`renderReactBanner` returns a `ReactBannerReport`. The fields you reach for most:
+
+| Field | Meaning |
+| --- | --- |
+| `files` | Written or buffered outputs: path, format, byte count, per-file budget verdict |
+| `lint` | Coded authoring warnings (`TM_*`), deduplicated, with fix hints |
+| `seam` | Loop-seam verdict (`mode: "exact"` when frame 0 equals the final frame) |
+| `timings` | Milliseconds spent in capture, parse, audit, and encode stages |
+
+A non-empty `report.lint` does not fail the render. It tells you what will cost bytes or break layout — for example `TM_KEBAB_STYLE` when a style object uses kebab-case keys that the engine rejects. See [Lint Codes](/reference/lint-codes) for the full table.
+
+## 5. Try the CLI
+
+The same banner renders from the terminal without writing a driver script:
+
+```sh
+npx takumi-motion render launch-banner.tsx --out ./out
+```
+
+The CLI accepts `--format gif,webp`, `--budget 800000`, `--filmstrip`, and more — every flag is documented in the [CLI reference](/reference/cli).
+
+## Next steps
+
+<LinkCard title="Declarative Banners" href="/tutorials/declarative-banners" description="Render banner recipes without writing React components." />
+
+<LinkCard title="CI Quality Gates" href="/guides/ci-quality-gates" description="Fail the build on layout shifts, seam breaks, or byte budgets." />
+
+<LinkCard title="React Components" href="/reference/react-components" description="Every component and prop in the runtime, with defaults." />
+
+
+## How-to Guides
+
+Task-oriented recipes for specific goals.
+
+### CI Quality Gates
+Source: /guides/ci-quality-gates
+
+import { Aside, LinkCard, Steps } from '@astrojs/starlight/components';
+
+Use this guide to make broken banners unshippable. Two tools cover the gates: the `check` CLI command for fast, local-style verification, and `renderWithAudit` for a full determinism-probing audit as data.
+
+## Exit codes you can gate on
+
+| Tool | Exit | Meaning |
+| --- | --- | --- |
+| `takumi-motion check` | `0` | Extents, seam, and sizes pass — "OK — ship it" |
+| `takumi-motion check` | `1` | A non-decorative extent violation, a seam that differs on a declared loop, or a size over budget — "FAILED — do not ship" |
+| `takumi-motion render --budget N` | `2` | Output exceeded the byte budget after the fps ladder ran |
+| `renderWithAudit()` | `0` / `1` / `2` | Pass / content failure (extent hard-fail) / over budget |
+
+The `check` command renders the banner once and audits it. With `--out` it also writes the preset's formats and checks their sizes; without it, the audit runs render-free of file output.
+
+## Add a GitHub Actions gate
+
+```yaml
+name: banner-quality
+on: [pull_request]
+
+jobs:
+  banners:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check banners
+        run: |
+          pnpm exec takumi-motion check src/banners/readme.tsx
+          pnpm exec takumi-motion check src/banners/og.tsx --budget 3000000
+      - name: Render artifact on failure for review
+        if: failure()
+        run: pnpm exec takumi-motion render src/banners/readme.tsx --out ./out
+```
+
+The failed run leaves the rendered files in `./out` for upload as an artifact, so reviewers see exactly what tripped the gate.
+
+## What `check` audits
+
+- **Extents** — the measured element tree is re-walked with fine-grid transform sampling; any box that leaves the canvas safe zone fails when it is not decorative (glow and ambient layers warn instead).
+- **Loop seam** — a declared `loop` must report a matching seam; strict-mode seam energy above 0.02 fails the declarative path.
+- **Sizes** — with `--out`, each written file's byte count is compared against its budget.
+
+## Audit as data: `renderWithAudit`
+
+Embed the same guarantees in your own pipeline. `renderWithAudit` renders, audits, and returns everything as JSON:
+
+```ts
+import { renderWithAudit } from "takumi-motion/audit";
+
+const { report, audit, exitCode, formatted } = await renderWithAudit({
+  banner: MyBanner,
+  preset: "readme",
+  budgetBytes: 2 * 1024 * 1024,
+  outDir: "./out",
+});
+
+if (exitCode !== 0) {
+  console.error(formatted);
+  process.exit(exitCode);
+}
+```
+
+The `audit` object contains `budget` (per-file verdicts), `extents` (violations with frame, target, edge, overflow), `seam`, `warnings`, and a `determinism` block — a full second render with a byte comparison of the first poster. Treat `audit.deterministic === false` as a hard alarm: it means the pipeline lost purity somewhere (a `Math.random` outside the shim, a clock read, a network fetch).
+
+<Aside type="tip">
+  `renderWithAudit` lives behind the `takumi-motion/audit` subpath export — a deliberate embeddability contract for platforms that render user banners.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Reduce File Size" href="/guides/reduce-file-size" description="When the budget gate fails, this is the playbook." />
+
+<LinkCard title="Seamless Loops" href="/guides/seamless-loops" description="Fix the seam failures your gate is catching." />
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="Every field of the audit and render reports." />
+
+### Data-Driven Animations
+Source: /guides/data-driven-animations
+
+import { Aside, Steps, LinkCard } from '@astrojs/starlight/components';
+
+Use this guide when a banner needs to visualize numbers — stars, revenue, latency, coverage. The data channel injects one JSON object at setup; nothing is fetched while frames render, which is what keeps the output byte-reproducible.
+
+## The rule: data enters at setup, never at render
+
+A network fetch inside a render function is a determinism violation. File reads are fine — they are immutable inputs. Pass data programmatically or through the CLI:
+
+```ts
+const report = await renderReactBanner({
+  banner: MetricsReel,
+  data: metricsJson,
+});
+```
+
+```sh
+npx takumi-motion render metrics-reel.tsx --data metrics.json --format webp
+```
+
+Inside the component tree, read the object anywhere with `useChartData`:
+
+```tsx
+import { useChartData } from "takumi-motion/react";
+
+function Headline() {
+  const data = useChartData<{ stars: number }>();
+  return <span>{data.stars.toLocaleString("en-US")} stars</span>;
+}
+```
+
+`useChartData(hint?)` throws with a hint listing registered keys when no channel exists; call `hasChartData()` when you need a quiet check.
+
+## Render a line chart
+
+`<LineChart>` builds one static SVG, then sweeps a per-frame `clip-path: inset()` across it — that clip reveal is the draw engine:
+
+```tsx
+<LineChart
+  data={{ series: [{ name: "rps", color: "#7aa2f7", points: [12, 30, 28, 55, 61, 80] }], labels: ["Jan", "Feb", "Mar"] }}
+  draw="reveal"
+  area
+  grid
+  showPoints
+/>
+```
+
+Key props: `draw="none"` renders the finished chart (use it for stills), `drawDurationFrames`/`drawDelayFrames` control the sweep, and `yTicks` sets gridline density. Data can arrive via props or the channel — omit the `data` prop and the chart reads `useChartData` itself.
+
+## Render bars and donuts
+
+`<BarChart>` grows bars with staggered closed-form springs; `<Donut>` sweeps a value arc:
+
+```tsx
+<BarChart
+  data={{ series: [{ name: "downloads", color: "#DF4D24", points: [820, 1240, 980, 1610] }] }}
+  orientation="up"
+  stagger
+  showValues
+/>
+
+<Donut value={0.83} size={140} color="#7aa2f7">
+  <span style={{ fontSize: 24 }}>83%</span>
+</Donut>
+```
+
+`<Donut>` validates `value` in the `[0, 1]` range. The default `paint="transform"` sweep is palette-safe for GIF; `paint="conic"` is the gradient alternative but trips the GIF dither lint on 1× surfaces.
+
+## Count up with stable digit columns
+
+`<CountUp>` accepts a `format` pattern — parsed once, rendered with `tabular-nums` forced on, so digit columns never reflow siblings:
+
+```tsx
+<CountUp to={4200} durationFrames={40} delayFrames={6} format="$,.0f" />
+<CountUp to={0.962} format=",.1f%" />
+<CountUp to={37} format="ms" />
+```
+
+Pattern grammar: `[prefix][, grouping][.Nf decimals][suffix]`. Function formers still work: `format={(v) => \`${Math.round(v).toLocaleString("en-US")}+ stars\`}`.
+
+<Aside type="caution">
+  Counting digits change width every frame. Without `tabular-nums` (applied automatically) or `minWidth` on custom layouts, neighboring elements shift and trip `TM_LAYOUT_SHIFT`.
+</Aside>
+
+## Next steps
+
+<LinkCard title="React Components" href="/reference/react-components" description="Full prop tables for LineChart, BarChart, Donut, and CountUp." />
+
+<LinkCard title="Reduce File Size" href="/guides/reduce-file-size" description="Count-up churn is WebP territory — read the report and act on it." />
+
+<LinkCard title="Seamless Loops" href="/guides/seamless-loops" description="Make data reels loop forever without a visible seam." />
+
+### Parallel Capture
+Source: /guides/parallel-capture
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Frame capture is embarrassingly parallel — each frame is a pure function of `(frame, props)` — so heavy banners render across worker threads. Use this guide when capture dominates your render time (large canvases, hundreds of frames, deep trees).
+
+## Switch to module mode
+
+Parallel capture requires the banner to be addressable as a module, because each worker imports it independently. Pass `bannerModule` instead of `banner`:
+
+```ts
+import { renderReactBanner } from "takumi-motion";
+
+const report = await renderReactBanner({
+  bannerModule: "./launch-banner.tsx", // the file's default export
+  workers: "auto",
+  formats: ["webp"],
+  outDir: "./out",
+});
+```
+
+The module path's default export can be a React element, a `defineBanner` component, or a function returning either. The CLI equivalent is `--workers auto` (module banners only).
+
+## Let the auto gate decide
+
+`workers: "auto"` refuses to spawn unless the host actually benefits:
+
+| Condition | Threshold |
+| --- | --- |
+| Available cores | ≥ 4 |
+| Banner length | ≥ 128 frames |
+| Measured capture work | ≥ 400 ms (probe-timed) |
+
+The main thread probes once — two static renders establish the plan and per-frame cost — and only then spawns up to 16 workers over a window grid. On smaller hosts the Rust stages already saturate the machine, and spawning JS workers oversubscribes it; the bench table in the repository records a real case where `workers: 4` on a 2-core host measured 0.88× (slower). The gate keeps serial there.
+
+A numeric `workers: 4` forces the pool (capped at 16 and at the frame count) when you know better than the gate.
+
+<Aside type="tip">
+  Byte-identity holds at **any** worker count — windows are concatenated and re-chunked once, plan agreement is asserted before merge, and the frame-seeded PRNG shim makes each frame's render a pure function of `(frame, props)`. Golden tests in the repository assert this invariant; you can assert it too by diffing serial and parallel outputs.
+</Aside>
+
+## Render frame windows
+
+Debug a range without re-rendering everything:
+
+```ts
+const report = await renderReactBanner({
+  bannerModule: "./reel.tsx",
+  fromFrame: 120,
+  toFrame: 180,
+});
+```
+
+The CLI pair is `--from 120 --to 180`. The report's `window` block records the range that ran.
+
+## Estimate before you commit
+
+The report's `timings` block splits capture, parse, audit, and encode. If `captureMs` is small next to `encodeMs`, more workers will not help — move to [Reduce File Size](/guides/reduce-file-size) instead.
+
+## Next steps
+
+<LinkCard title="Determinism" href="/explanation/determinism" description="How the frame-seeded shim keeps workers byte-exact." />
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="renderReactBanner options and the timings block." />
+
+<LinkCard title="CLI" href="/reference/cli" description="--workers, --from/--to, and --concurrency flags." />
+
+### Preview and Inspect
+Source: /guides/preview-and-inspect
+
+import { Aside, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Four inspection tools ship with the engine. They answer different questions — picking the right one saves render cycles.
+
+## The tools at a glance
+
+| Tool | What you get | Source of truth | Best for |
+| --- | --- | --- | --- |
+| `--filmstrip` | N engine-exact stills in one self-contained HTML | The actual shipped pixels | Review diffs — output is byte-deterministic |
+| `preview` | A playable HTML of the captured CSS | Approximate layout | Scrubbing motion timing |
+| `storyboard` | A labeled PNG contact sheet of the timeline | Engine-rasterized cells | Whole-timeline visual QA |
+| `renderStill` | One PNG frame | Engine-exact | Link previews, avatars, golden frames |
+
+## Engine-exact filmstrip
+
+Every cell is rendered by the Rust engine — what you review is what you ship:
+
+<Tabs>
+  <TabItem label="6 evenly spaced frames">
+    ```sh
+    npx takumi-motion render banner.tsx --filmstrip
+    ```
+  </TabItem>
+  <TabItem label="Explicit frames">
+    ```sh
+    npx takumi-motion render banner.tsx --filmstrip 0,15,30
+    ```
+  </TabItem>
+  <TabItem label="10 frames">
+    ```sh
+    npx takumi-motion render banner.tsx --filmstrip 10
+    ```
+  </TabItem>
+</Tabs>
+
+The filmstrip is self-contained HTML and byte-deterministic, so it diffs cleanly in pull requests. Programmatic form: `renderFilmstrip` (root export) — accepts react banners, HTML sources, and declarative node+timeline alike.
+
+## CSS preview player
+
+```sh
+npx takumi-motion preview banner.tsx -o banner-preview.html
+```
+
+The player replays the captured CSS in a browser — good for feeling the motion, approximate for layout. The encoded GIF/WebP remains the source of truth; when they disagree, trust the encoded output.
+
+## Storyboard contact sheet
+
+The storyboard renders a labeled PNG grid of the whole timeline (cells rasterized by the engine — the sheet itself is a takumi document) plus a sidecar JSON with the sampled frame indices:
+
+```sh
+npx takumi-motion storyboard reel.tsx --frames 12 --columns 4 --out ./qa
+```
+
+Use it to review scene order, transitions, and seam behavior at a glance. Programmatic form: `renderStoryboard` with `{ banner, frames, columns, scale }`.
+
+## Single stills
+
+```sh
+npx takumi-motion render banner.tsx --still        # settled frame (~60% of the timeline)
+npx takumi-motion render banner.tsx --still 0      # explicit frame
+```
+
+Looping banners poster and still default to frame 0 — the landing frame. `renderStill` returns `{ png, bytes, path }` and supports all three source paths.
+
+<Aside type="tip">
+  Pair the filmstrip with `--explain`: the filmstrip shows which frames exist, the X-ray shows why each one exists. Together they localize size waste in one pass.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Reduce File Size" href="/guides/reduce-file-size" description="Turn X-ray attribution into byte savings." />
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="Filmstrip, storyboard, and still options in full." />
+
+<LinkCard title="CLI" href="/reference/cli" description="Every flag mentioned here, with defaults." />
+
+### Reduce File Size
+Source: /guides/reduce-file-size
+
+import { Aside, LinkCard, Steps } from '@astrojs/starlight/components';
+
+Encoded size is per-frame delta × frames. Everything in this guide attacks one of those two terms. Start from the report — it tells you which term dominates.
+
+## 1. Set a budget and let the fps ladder work
+
+The CLI accepts a byte budget and negotiates frame rate for you:
+
+```sh
+npx takumi-motion render banner.tsx --budget 800000 --out ./out
+```
+
+When the first render exceeds the budget, the ladder re-renders at 75%, then 50% of the fps (floor 6 fps, first preset format) and keeps the first attempt that fits. The CLI exits `2` when even the ladder fails — wire that into CI as described in [Quality Gates](/guides/ci-quality-gates). Programmatically the same ladder is `optimizeBudget` from the root export.
+
+## 2. Read the X-ray before guessing
+
+`--explain` (or `explain: true` on `renderReactBanner`) attaches per-frame attribution to `report.explain`: every frame is classified as a start, hold, or change, and each change is attributed to a channel — opacity, transform, clip, layout, paint, text, or structure:
+
+```sh
+npx takumi-motion render banner.tsx --explain --json | jq .explain.summary
+```
+
+```json
+{
+  "totalFrames": 180,
+  "uniqueFrames": 96,
+  "holds": 84,
+  "cheapFrames": 52,
+  "churnFrames": 44,
+  "churnRanges": [{ "from": 60, "to": 104 }]
+}
+```
+
+Cheap frames (opacity, clip) compress well. Churn frames (layout, text, structure) re-encode whole regions — a churn range in the middle of a static scene is your first target.
+
+## 3. Apply the doctrine fixes
+
+- **Prefer WebP for glow and color sweeps.** Palette dithering of soft gradients is the leading GIF size trap — 1× glow GIFs compressed worse than 2× in the project benchmarks. The `TM_GLOW_GIF_DITHER` lint fires on `filter: blur()` at dpr 1 into GIF.
+- **Let holds collapse.** Settled animation descriptors emit no style overrides, so identical frames merge into zero-delta holds — the GIF pass rewrites them as longer frame delays (`collapseGifHolds` is on by default; the report's `collapse` block shows frames and bytes saved).
+- **Stop perpetual churn.** Confetti without `burstFrames`, unbounded particle fields, and never-settling springs trip `TM_PARTICLE_CHURN` and `TM_TRANSITION_UNSETTLED`. Finite bursts are the doctrine: a GIF that never stops moving never compresses.
+- **Fix unintended layout shifts.** `TM_LAYOUT_SHIFT` names the culprit sibling and the delta — counting digits need `tabular-nums` or `minWidth`, late siblings need reserved space.
+- **Use `--still` for static surfaces.** When the destination is a single frame (link previews, avatars), `renderStill` emits one PNG instead of an animation.
+
+## 4. Pick the leanest surface that works
+
+| Preset | Size | fps | Formats | Budget |
+| --- | --- | --- | --- | --- |
+| `readme-lean` | 850×200 | 12 | gif | 1.25 MiB |
+| `readme` | 850×200 | 20 | gif, webp | 2 MiB |
+| `readme-hd` | 850×200 | 20 | webp (dpr 2) | 2 MiB |
+| `readme-profile` | 850×300 | 20 | gif, webp | 2.25 MiB |
+| `readme-wide` | 1280×300 | 20 | gif, webp | 3 MiB |
+| `og-card` | 1200×630 | 20 | gif, webp | 4 MiB |
+
+Drop to `readme-lean` when the host platform re-compresses your asset anyway. For sprite-sheet or frame-sequence workflows, the PNG encoder's min-SAD filter heuristic already cut atlas bytes by 90%+ in the v1.0 pass — see [Performance & Size](/explanation/performance-and-size).
+
+<Aside type="note">
+  High-chroma OKLCH color sweeps on large areas dither into palette noise in GIFs at dpr 1. The perceptual color API is still the right authoring surface — pair it with WebP when the design demands vivid washes.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Performance & Size" href="/explanation/performance-and-size" description="Why the engine is fast and where the bytes went." />
+
+<LinkCard title="Lint Codes" href="/reference/lint-codes" description="Every size-related warning and its fix." />
+
+<LinkCard title="Presets, Themes & Fonts" href="/reference/presets-and-themes" description="Preset dimensions, budgets, and overrides." />
+
+### Render Raw HTML
+Source: /guides/render-from-raw-html
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+The engine accepts raw HTML as a first-class source. Use this path when the animation already exists as markup — a design system snippet, a generated template, a no-JS pipeline — and you need the same deterministic outputs the React path produces.
+
+## Render an HTML string
+
+```ts
+import { renderHtmlAnimation } from "takumi-motion";
+
+const report = await renderHtmlAnimation({
+  html: `<div id="badge"><h1>ship it</h1></div>`,
+  css: `
+    #badge { display: flex; align-items: center; height: 200px; }
+    h1 { opacity: 0; animation: rise 1.2s ease-out forwards; }
+    @keyframes rise { from { opacity: 0; transform: translateY(-24px); } to { opacity: 1; } }
+  `,
+  frames: 30,
+  fps: 20,
+  width: 850,
+  height: 200,
+  outDir: "./out",
+});
+```
+
+`renderHtmlAnimation` extracts the `<body>` from full documents (or takes a fragment), hoists `<style>` blocks, samples `frames` deterministic poses of the CSS animations, and encodes the preset formats. The report carries `cssEntries`, `styleBlocksHoisted`, `files`, `posters`, `fonts`, and budget fields.
+
+## Use the CLI for files
+
+The `render` command accepts `.html` and `.htm` files directly:
+
+```sh
+npx takumi-motion render badge.html --css badge.css --font-file Brand.ttf --frames 40 --out ./out
+```
+
+| Flag | Purpose |
+| --- | --- |
+| `--css <file>` | Attach an external stylesheet |
+| `--font-file <path>` | Register a local TTF/OTF (repeatable; family defaults to the file stem) |
+| `--frames <n>` | Frame count for the HTML path (default 30) |
+| `--width` / `--height` / `--dpr` | Surface overrides |
+| `--format gif,webp,apng` | Output formats |
+| `--budget <bytes>` | Byte budget with exit code 2 on failure |
+
+## Keep determinism intact
+
+- Avoid JavaScript in the HTML — the engine renders markup and CSS, not scripts.
+- Font bytes belong in the build: vendor TTF/OTF files locally (`--font-file`) instead of Google Fonts URLs. Remote fonts trip the `TM_FONT_NETWORK` lint because byte-determinism holds only while the remote bytes do.
+- WOFF/WOFF2 files are rejected — convert to TTF or OTF first.
+
+## Stills from HTML
+
+`renderStill` accepts the same source trio — react banner, html, or declarative node+timeline:
+
+```ts
+import { renderStill } from "takumi-motion";
+
+const still = await renderStill({ html: fragment, css, width: 1200, height: 630 });
+console.log(still.png.length); // PNG bytes
+```
+
+## Next steps
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="renderHtmlAnimation options and the full report shape." />
+
+<LinkCard title="Preview and Inspect" href="/guides/preview-and-inspect" description="Filmstrips and storyboards for HTML and React sources." />
+
+<LinkCard title="CI Quality Gates" href="/guides/ci-quality-gates" description="Gate HTML renders with the same exit codes." />
+
+### Seamless Loops
+Source: /guides/seamless-loops
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+A looping README badge shows its cut point every few seconds unless the last frame equals the first. Takumi Motion guarantees that equality byte-for-byte instead of asking you to eyeball it. Use this guide whenever you set `<Banner loop>`.
+
+## React path: wrap the seam
+
+Declare `loop` on the banner and mark the boundary that closes the circle. Either the first scene enters with `wrap` or the last scene exits with `wrap` — one of the two, never both:
+
+```tsx
+<Banner loop fps={24}>
+  <Scene duration={90}>…</Scene>
+  <Scene duration={76} exit="wrap">…</Scene>
+</Banner>
+```
+
+`exit="wrap"` appends a crossfade tail into scene 1's frozen frame-0 layer; at the final wrap frame the leaving node drops, so the last frame and frame 0 are byte-identical by construction. The report carries the verdict:
+
+```json
+{ "seam": { "mode": "exact", "loop": true } }
+```
+
+<Aside type="caution">
+  A `<Banner loop>` without a wrap earns the `TM_LOOP_SEAM` lint pointing at the fix. A `wrap` transition is honored only on the last scene of a looping banner.
+</Aside>
+
+Looping banners default their poster to frame 0 — the landing frame — instead of the mid-timeline default.
+
+## Declarative path: loop utilities
+
+The root export includes four composable utilities:
+
+| Utility | Purpose |
+| --- | --- |
+| `fadeWrap(timeline, { selector, inMs, outMs, periodMs })` | Owns a target's opacity: fades in, holds, fades out. Sets `timeline.wrap = { selector }` so the seam checker knows the loop is wrapped. Throws when the target already has an opacity track. |
+| `alignLoopPeriod(timeline, capMs?)` | Snaps the duration up to the least common multiple of all infinite tracks' periods so every track lands on its phase at the seam. Throws on phase-shifted infinite tracks or an LCM above the cap. |
+| `checkLoopSeam(timeline, { tolerance? })` | Returns `{ seamless, mode, diffs }`. `wrapped` mode checks wrap opacity at both ends (tolerance default 0.02); `strict` mode demands every numeric track's first value equal its last. |
+| `assertAmbientPeriod(durationMs, periodMs, label)` | Verifies a mirror-cycle ambient track (2× iteration) divides the loop period exactly. |
+
+A complete declarative loop:
+
+```ts
+import { createTimeline, alignLoopPeriod, fadeWrap, renderBanner } from "takumi-motion";
+
+const timeline = createTimeline({ fps: 20 })
+  .add(node, { y: [0, -12, 0] }, { duration: 1200, repeat: Infinity, repeatType: "mirror" });
+
+const aligned = alignLoopPeriod(timeline);
+const wrapped = fadeWrap(aligned, { selector: "#badge", inMs: 350, outMs: 350 });
+
+const report = await renderBanner({ node, timeline: wrapped, outDir: "./out" });
+```
+
+## Verify before shipping
+
+- **React path** — read `report.seam.mode`; the golden composition test proves `mode: "exact"` after a byte check.
+- **Declarative path** — call `checkLoopSeam(wrapped)` and assert `seamless === true`.
+- **CLI** — `takumi-motion check banner.tsx` fails (exit 1) when a declared loop reports `seam.mode === "differs"`. Wire it into CI with [Quality Gates](/guides/ci-quality-gates).
+
+## Next steps
+
+<LinkCard title="CI Quality Gates" href="/guides/ci-quality-gates" description="Turn seam and extent audits into a merge-blocking check." />
+
+<LinkCard title="Data-Driven Animations" href="/guides/data-driven-animations" description="Charts and count-ups that survive looping." />
+
+<LinkCard title="Lint Codes" href="/reference/lint-codes" description="TM_LOOP_SEAM and every other coded warning." />
+
+
+## Reference
+
+API surface: CLI, components, hooks, engine, renderers, lint codes.
+
+### CLI
+Source: /reference/cli
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+The `takumi-motion` binary ships with the package (`pnpm exec takumi-motion`, `npx takumi-motion`, or `node_modules/.bin/takumi-motion`). Running it with no arguments prints usage and exits with code 1.
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `render <file>` | Render a TS/TSX/JS banner module or an `.html` file to GIF/WebP/APNG, posters, stills, sequences, or sprite sheets |
+| `check <file>` | Extent audit + loop-seam + optional size probe — the CI gate (exit 0 pass, 1 fail) |
+| `preview <file>` | Write a standalone HTML player of the captured CSS |
+| `storyboard <file.tsx>` | Labeled PNG contact sheet of the timeline (React banners) |
+| `init [dir]` | Scaffold a `banner.ts` (or `banner.tsx` with `--react`) and a `tsconfig.json`; refuses when a banner file already exists |
+| `templates` | List the built-in recipes (`typewriter`, `countup`, `sweep`, `cascade`) |
+| `presets` | List presets with size, fps, formats, and budget |
+| `fonts` | List the curated Google Font catalog by role |
+
+## Module shapes `render` accepts
+
+The loader resolves each candidate as `mod.default ?? mod.banner ?? mod.element`, then routes by shape:
+
+| Shape | Route |
+| --- | --- |
+| React element (has `$$typeof`) | React runtime |
+| `defineBanner()`-marked function | React runtime |
+| Plain sync/async function | Called and awaited; result routed to react or declarative by shape (force react with `--react`) |
+| `{ timeline, element \| node, fonts? }` | Declarative path |
+| `.html` / `.htm` file | Raw HTML path (pair with `--css`, `--font-file`) |
+
+## Flags
+
+### Surface
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--preset <name>` | `readme` | Preset recipe; explicit surface flags win over it |
+| `--width`, `--height` | preset | Logical canvas size in px |
+| `--dpr <n>` | preset | Device pixel ratio (surface ceiling: 8192 px, dpr ≤ 8) |
+| `--background <color>` | theme | CSS color or `transparent` for an alpha canvas |
+| `--fps <n>` | preset | Sampling and encoder fps |
+
+### Output
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--out`, `-o <dir>` | `./out` | Output directory (`preview` honors an `.html` path) |
+| `--format <list>` | preset | Comma-separated: `gif,webp,apng` |
+| `--quality <0-100>` | preset | WebP quality (mutually exclusive with `--lossless`) |
+| `--lossless` | false | Lossless WebP |
+| `--no-poster` | false | Skip the poster PNG |
+| `--still [frame]` | false | Single-frame PNG instead of an animation (default frame: settled ~60%) |
+| `--sequence` | false | PNG frame sequence + `frames.json` manifest |
+| `--spritesheet` | false | Sprite atlas PNG + metadata JSON |
+| `--sprite-columns <n>` | `ceil(√n)` | Atlas columns |
+| `--sprite-every <n>` | 1 | Frame stride in the atlas |
+| `--filmstrip [n\|f1,f2,…]` | false | Engine-exact contact sheet next to the outputs |
+| `--preview` | false | Also write `banner-preview.html` |
+| `--json` | false | Full report as JSON (buffers rendered as `<n bytes>`) |
+| `--quiet`, `-q` | false | Suppress the report |
+
+### Budget, data, and execution
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--budget <bytes>` | unset | Budget verdict; triggers the fps ladder (100% → 75% → 50%, floor 6 fps); exit 2 when over |
+| `--data <file>` | – | JSON data channel, read once at setup |
+| `--font-file <path>` | `[]` | Local TTF/OTF to register (repeatable; family = file stem) |
+| `--concurrency <n>` | cores, cap 8 | Bounded parallelism for parse/measure/frame stages |
+| `--workers <n\|auto>` | unset (1) | Worker threads for the capture stage (module banners only) |
+| `--from <n>` / `--to <n>` | 0 / all | Output-frame window `[from, to)` (React path) |
+| `--react` | false | Force the React runtime for unmarked function exports |
+| `--kit` | false | Full declarative asset set (`readme`, `readme-hd`, `readme-lean` + static twin) |
+| `--explain` | false | Per-frame channel attribution X-ray (React path) |
+| `--duration <frames>` | 30 | Frames for the HTML path |
+| `--css <file>` | – | Stylesheet for the HTML path |
+
+## Exit codes
+
+| Code | Raised by | Meaning |
+| --- | --- | --- |
+| `0` | all commands | Success (`check`: "OK — ship it") |
+| `1` | all commands | Error or failed audit (`check`: "FAILED — do not ship") |
+| `2` | `render --budget`, `--kit` | Output exceeded the byte budget after the ladder |
+
+<Aside type="note">
+  `check` prints extents findings per frame (warn for decorative overflow, FAIL for content), the seam verdict, and lint warnings — the same data the JSON report carries.
+</Aside>
+
+## Next steps
+
+<LinkCard title="CI Quality Gates" href="/guides/ci-quality-gates" description="A ready-made GitHub Actions job using check and budgets." />
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="The programmatic equivalents of every flag." />
+
+### Core Engine API
+Source: /reference/core-engine
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+The root export (`takumi-motion`) exposes the authoring and evaluation core. React is an optional peer — everything on this page runs without it.
+
+## Timelines
+
+### `createTimeline(options?)` → `Timeline`
+
+```ts
+const timeline = createTimeline({ fps: 20, defaultTransition })
+  .add(target, keyframes, options)
+  .label("intro");
+```
+
+`add(target, keyframes, options?)` accepts partial records of `AnimatableProperty` → keyframes and returns `TimelineTarget` handles. Options:
+
+| Option | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `at` | `number \| "<" \| "<+n" \| "<-n" \| label` | end of previous | Position on the timeline |
+| `stagger` | `number` | `0` | Offset per target (ms) |
+| `times` | `number[]` | even | Keyframe times |
+| `delay`, `repeat`, `repeatType`, `repeatDelay` | playback | – | `repeatType: "loop" \| "reverse" \| "mirror"` |
+| transition fields | – | – | `type`, `stiffness`, `damping`, `duration`, `ease`, … |
+
+Default transitions mirror Motion: more than 2 keyframes → tween 800 ms; transforms → spring (scale 550/damped, others 500/25); everything else → tween 300 ms `ease [0.25, 0.1, 0.35, 1]`. React element targets get auto-assigned `tm-N` selector classes.
+
+`Timeline.toJSON()` produces the interchange format every renderer accepts:
+
+```ts
+interface TimelineJSON {
+  version: 1;
+  durationMs: number;
+  tracks: TrackJSON[];
+  wrap?: { selector: string };
+}
+```
+
+### Transforms
+
+| Function | Behavior |
+| --- | --- |
+| `shiftTimeline(timeline, deltaMs)` | Moves everything later; refuses negative deltas (they would clip tracks) |
+| `concatTimelines([a, b, c])` | Stacks timelines back-to-back — the data equivalent of `<Series.Sequence>` |
+| `scaleTimeline(timeline, tempo)` | Rescales tween durations (springs are not rescaled) |
+
+## Compilation and evaluation
+
+### `compileTimeline(json, { fps? = 30, resolveBase?, lint? = true })` → `CompiledTimeline`
+
+Bakes the whole timeline onto a shared fps grid and structural boundaries: CSS keyframes rules per selector, transform props merged per target, linear timing, fill both. Returns `{ css, durationMs, fps, animations, lint }` — `durationMs` is fps-grid aligned; `lint` carries authoring warnings. Renderers call this internally; bake it yourself to inspect or ship the CSS.
+
+### `evaluateAt(json, tMs, { resolveBase?, rawTransforms? })` → `EvaluatedStyles`
+
+Samples every track at time `tMs` and returns `Record<selector, Record<prop, value>>` with the composed `transform` string. This is the single-frame truth the still/filmstrip paths build on. Engine time is integer milliseconds at the boundary (`toEngineMs` clamps and floors).
+
+## Springs and inertia
+
+### `springGenerator(options)` → `SpringGenerator`
+
+| Option | Default | Notes |
+| --- | --- | --- |
+| `stiffness` | `100` | Physics mode |
+| `damping` | `10` | Physics mode |
+| `mass` | `1` | Physics mode |
+| `duration` | `800` | Time mode (ms) |
+| `bounce` | `0.3` | Time mode (0 = critically damped) |
+| `visualDuration` | – | Perceptual duration (s) — alternative to `duration` |
+| `velocity` | `0` | Initial velocity |
+| `restSpeed` / `restDelta` | Motion defaults | Settle thresholds |
+| `keyframes` | – | `[from, to]` for retargetable springs |
+
+The generator exposes `next(t)`, `velocity(t)`, `retarget(keyframes, newVelocity)`, and `calculatedDuration`. Overdamped configurations clamp (`overshootClamping`). Helpers: `calcGeneratorDuration(gen)`, `springDefaults`.
+
+### `inertiaGenerator(options)` → `InertiaGenerator`
+
+Decay-and-bounce motion: `velocity` 0, `power` 0.8, `timeConstant` 325, `bounceDamping` 10, `bounceStiffness` 500, `restDelta` 0.5, optional `min`/`max`/`modifyTarget`. Boundary catch springs keep motion inside the range.
+
+<Aside type="caution">
+  Springs are solved by physics — a `duration` on a spring track is silently ignored and trips the `TM_SPRING_DURATION` lint.
+</Aside>
+
+## Easing
+
+`Easing` namespace — React Native semantics, exact:
+
+- Curves: `linear`, `easeIn/Out/InOut`, `circIn/Out/InOut`, `backIn/Out/InOut`, `bounceIn/Out/InOut`, `anticipate`
+- Factories: `Easing.poly(n)`, `Easing.elastic(bounciness = 1)`, `Easing.back(s = 1.70158)`, `Easing.bezier(x1, y1, x2, y2)`, `Easing.steps(n, "start" | "end")`
+- Combinators: `Easing.in(f)`, `Easing.out(f)`, `Easing.inOut(f)` — base curves are in-shaped, so `in` is the identity
+
+String names (`"backOut"`, `"easeInOut"`, …) are accepted wherever an `Easing` appears; arrays are cubic beziers. `easingToCssTiming(def)` returns a CSS timing function or `null` when the curve must be baked per-frame. `getEasingForSegment(easing, i)` wraps arrays across segments.
+
+## Interpolation and color
+
+| Function | Notes |
+| --- | --- |
+| `createTweenSampler({ keyframes, times?, ease?, duration }, baseValue?)` | Per-segment easings precomputed, binary-search segment lookup (v1.0); `sample(tMs)` clamps |
+| `mixColor(from, to, t, { space? = "oklch" })` | Perceptual mix — **OKLCH is the default**, shortest hue path |
+| `interpolateColorFor(frame, inputFrames, colors, { space?, easing? })` | Multi-stop color mapping for the frame |
+| `parseColor(css)` / `rgbaToCss(rgba)` / `colorToOklch(css)` | Hex 3/4/6/8, `rgb()`, `hsl()`, 148 named colors, `transparent`; parse results memoize |
+| `mixColors` / `mixComplex` / `mixValues` | The frozen compile-path blenders — byte-determinism contract; use `color.ts` APIs for new work |
+| `buildTransform` / `isTransformProp` / `transformPropOrder` | CSS transform composition in engine order |
+
+## Next steps
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="Where TimelineJSON goes once authored." />
+
+<LinkCard title="Architecture" href="/explanation/architecture" description="How authoring, compiling, and rasterizing connect." />
+
+### Hooks & Motion Math
+Source: /reference/hooks
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Hooks read the frame context inside `<Scene>` (they throw outside one). Each hook has a pure companion — the same math taking the frame explicitly — importable from the root export for use outside React.
+
+## Frame context
+
+| Hook | Returns |
+| --- | --- |
+| `useFrame()` | `FrameInfo { frame, absolute, sceneFrames, bannerFrames, fps, timeMs }` |
+| `useCurrentFrame()` | Scene-local frame (restarts per scene) |
+| `useAbsoluteFrame()` | Global banner frame |
+| `useDuration()` | Current scene's duration in frames |
+| `useFps()` | Banner fps |
+| `useCue(expr)` | Absolute frame for a cue expression: `"intro"`, `"intro+12f"` (scenes need a `label`) |
+
+## Springs and interpolation
+
+| Hook | Signature | Returns |
+| --- | --- | --- |
+| `useSpring` | `(options?: SpringAtOptions) => number` | Spring sampled at the current frame |
+| `useStaggeredSpring` | `(index, options?: StaggeredSpringOptions) => number` | Spring delayed by `startFrames + index × intervalFrames` (defaults 0/2) |
+| `useInterpolate` | `(inputFrames, output, easing?) => number` | Eased multi-stop mapping, clamped |
+| `usePulse` | `(periodFrames) => number` | Triangle 0→1→0, frame-aligned |
+| `useSmoothPulse` | `(periodFrames) => number` | Sine 0→1→0 |
+
+Spring options carry Motion's full vocabulary: `stiffness` (100), `damping` (10), `mass` (1), `duration` (800), `bounce` (0.3), `visualDuration`, `velocity`, `restSpeed`, `restDelta`, `overshootClamping`, plus `from` (0), `to` (1), `delayFrames` (0).
+
+`SpringAtOptions` fields may be functions of the frame index for per-frame retargeting.
+
+## Pure companions (root export)
+
+| Function | Signature | Notes |
+| --- | --- | --- |
+| `springFor` | `(frame, fps, options) => number` | Memoized solver (v1.0 Velocity) |
+| `interpolateFor` | `(frame, inputFrames, output, easing?) => number` | Hook-free `useInterpolate` |
+| `interpolate` | `(input, inputRange, outputRange, { easing?, extrapolateLeft?, extrapolateRight? })` | Remotion-signature mapping; monotonic, equal-length ranges |
+| `pulseFor` / `smoothPulseFor` | `(frame, periodFrames) => number` | Hook-free pulses |
+| `randomFor` | `(seed, ...salt) => number` | mulberry32-derived value in `[0, 1)`, stable per (seed, salt) |
+| `noiseFor` | `(seed, options?) => number` | 2D value noise in ± amplitude (amp 1, frequency 0.1) |
+| `staggerDelay` / `staggeredSpringFor` | `(index, ...) => ...` | Hook-free stagger |
+| `springPresets` | `snappy`, `bouncy`, `gentle`, `wobbly`, `stiff`, `slow` | Spread into any spring: `useSpring({ ...springPresets.snappy, from: 24 })` |
+| `springSettleFrames` | `(fps, options) => number` | Frames until the spring rests — `Infinity` for absurd configs |
+| `wiggleFor` | `(seed, frame, { amplitude=4, frequency=0.15 }) => number` | Hook-free `<Wiggle>` |
+| `frameToMs` / `msToFrames` | `(n, fps) => number` | `msToFrames` rounds up |
+| `mulberry32` | `(seed) => () => number` | The seeded PRNG underpinning all randomness |
+| `hashString` | `(s) => number` | String → numeric seed |
+
+## State and data
+
+| Hook | Signature | Notes |
+| --- | --- | --- |
+| `useFrameState` | `(reducer, initial, events?) => S` | State replayed from frame 0 on every render — the reducer must be deterministic; `events(frame)` returns actions or null |
+| `useChartData` | `<T>(hint?) => T` | The banner data object; throws with a key hint when absent |
+| `hasChartData` | `() => boolean` | Quiet check |
+| `useEntering` / `useExiting` | `(descriptor) => { opacity?, transform? } \| null` | `null` = settled = emit nothing |
+
+## Canonical names, intentionally distinct
+
+| Purpose | Canonical | Hook sugar | Pure companion |
+| --- | --- | --- | --- |
+| Frame-range mapping | `interpolate(frame, in, out, { easing })` | `useInterpolate(in, out, easing?)` | `interpolateFor(frame, in, out, easing?)` |
+| Spring | `useSpring(options)` | — | `springFor(frame, fps, options)` |
+| Stagger | `useStaggeredSpring(index, opts)` | — | `staggeredSpringFor(...)` |
+
+The three interpolate variants are intentionally distinct: context-free vs context-reading. Prefer `interpolate` for new code.
+
+<Aside type="caution">
+  Never call `Math.random()` in a render function. Use `useRandom`/`randomFor` (seeded) — that is what makes frames replay byte-identically and what lets worker windows merge byte-exactly.
+</Aside>
+
+## Next steps
+
+<LinkCard title="React Components" href="/reference/react-components" description="The components these hooks power." />
+
+<LinkCard title="Determinism" href="/explanation/determinism" description="Why seeded randomness and integer engine time are non-negotiable." />
+
+### Lint Codes
+Source: /reference/lint-codes
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Every render (`renderReactBanner`, `renderBanner`, `renderWithAudit`) carries a `lint: LintWarning[]` channel alongside the legacy `warnings: string[]`. Findings are deduplicated, capped at 20 per code (with a truncation notice), and survive `--json` — a consumer platform can render them, filter them, or fail CI on specific codes.
+
+```ts
+interface LintWarning {
+  code: LintCode;   // stable TM_* identifier
+  message: string;  // diagnosis, with the offending key/value/path
+  hint?: string;    // the fix, phrased as what to do instead
+  severity: "warn" | "info";
+}
+```
+
+## Style safety
+
+| Code | Catches | Why it matters |
+| --- | --- | --- |
+| `TM_KEBAB_STYLE` | Kebab-case keys in React style objects | React 19's unitless table is keyed on camelCase — `"font-weight": 700` renders as `font-weight:700px`, which the engine rejects (render fails with a Rust parse error). Fix: `"fontWeight"` |
+| `TM_NAN_STYLE` | `NaN` / `Infinity` / `undefined` in styles or markup | Broken springs (stiffness 0), inverted interpolate ranges — silently produces garbage styles |
+| `TM_EMPTY_STYLE` | Elements that rendered `style=""` | Every declaration was dropped upstream — usually the kebab bug or an undefined style object |
+| `TM_UNKNOWN_STYLE_PROP` | (strict mode) properties outside `SUPPORTED_STYLE_PROPS` | Advisory — the engine supports more than the curated list; verify then extend |
+
+Type-level safety pairs with the lint: `satisfies TakumiStyle` turns typos into compile errors, `UNITLESS_STYLE_PROPS` mirrors React's unitless table, and `--custom` properties go through the explicit `--*` key form.
+
+## Motion and layout
+
+| Code | Catches | Why it matters |
+| --- | --- | --- |
+| `TM_SPRING_DURATION` | Declarative tracks mixing `type: "spring"` with `duration` | Springs are solved by physics; the duration is silently ignored |
+| `TM_TRANSITION_UNSETTLED` | `<Animated>` enter/exit that cannot complete inside its scene window | Settling math is in the message; check `springSettleFrames(fps, opts) <= framesRemaining` for raw `useSpring` |
+| `TM_LAYOUT_SHIFT` | A measured box that moves inside a scene without an authored transform | The culprit sibling and delta are named. Fix: absolute park, reserved space, or fixed-width digits (`tabular-nums`, `minWidth`) |
+| `TM_MORPH_UNMEASURED` | `<Morph>` without prewarmed rects | Items jump — render through the capture runtime, which prewarms both layout states |
+| `TM_FITTEXT_UNMEASURED` | `<FitText>` without a prewarmed measurement | Fell back to `max` font size — render through the runtime or precompute with `fitFontSize()` |
+| `TM_NOISE_ALIASED` | Noise frequency above 0.5 lattice cells/frame (Nyquist) | Motion aliases into strobing — `<Camera shake>`, `<Wiggle>` |
+| `TM_VELOCITY_DROPPED` | `carryVelocity()` requested on a segment that cannot receive it | The chain loses momentum silently otherwise |
+
+## Size and output
+
+| Code | Catches | Why it matters |
+| --- | --- | --- |
+| `TM_GLOW_GIF_DITHER` | `filter: blur()` in a GIF render at dpr 1 | Palette dithering of soft gradients is the leading GIF size trap — 1× glow GIFs compressed worse than 2× in benchmarks. Prefer WebP, dpr 2, or flat accents |
+| `TM_PARTICLE_CHURN` | Unbounded particle churn or confetti without `burstFrames` / over the 24-particle budget | Size is per-frame delta × frames; a field that never settles never compresses |
+| `TM_LOOP_SEAM` | A `<Banner loop>` whose last frame differs from frame 0 (no `wrap`) | The loop visibly snaps — the hint points at `exit="wrap"` |
+| `TM_FONT_NETWORK` | Google Font specs or URL font files fetched at render | Byte-determinism holds only while the remote bytes do — vendor TTF/OTF locally |
+
+## Working with the channel
+
+```ts
+const report = await renderReactBanner({ banner: MyBanner });
+
+for (const warning of report.lint) {
+  console.log(`[${warning.severity}] ${warning.code}: ${warning.message}`);
+  if (warning.hint) console.log(`  fix: ${warning.hint}`);
+}
+```
+
+Helpers: `collectLintWarnings` dedupes, `formatLint` renders text, `camelHint` produces the kebab→camel suggestion, `NO_LINT` is the empty channel. Strict mode (unknown-property checking) is opt-in per lint call.
+
+<Aside type="tip">
+  The lint is advisory — nothing fails a render by itself. Gate on it by filtering specific codes in CI, or use `takumi-motion check` for the hard-fail audits (extents, seam, budget).
+</Aside>
+
+## Next steps
+
+<LinkCard title="Reduce File Size" href="/guides/reduce-file-size" description="Acting on the size-related codes." />
+
+<LinkCard title="CI Quality Gates" href="/guides/ci-quality-gates" description="Failing builds on extents, seam, and budgets." />
+
+### Package Exports
+Source: /reference/package-exports
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+`takumi-motion` is ESM (`"type": "module"`), types included. React is an optional peer dependency — import the core without it.
+
+## Subpath map
+
+| Import | Exposes |
+| --- | --- |
+| `takumi-motion` | Everything: core engine (timelines, compile, evaluate, springs, easings, color), renderers (`renderBanner`, `renderReactBanner`, `renderStill`, …), the React runtime re-export, audit, fonts, themes, presets, templates, lint, surface, concurrency, storyboard, filmstrip, kit |
+| `takumi-motion/react` | The authoring surface: primitives (`Banner`, `Scene`, `Layer`), sequencing (`Sequence`, `Freeze`, `Series`, `Loop`), hooks, motion math, `SplitText`, `Fill`/`Img`/`FitText`, material pack, charts, `<Morph>`, `<Particles>`, `<Animated>`/`<Keyframes>`, `<Camera>`/`<Wiggle>`/`<FollowPath>`, enter/exit vocabulary, `chain`/`hold`, cue system, data channel |
+| `takumi-motion/audit` | `renderWithAudit` + audit types — the embeddability contract for platforms rendering user banners |
+| `takumi-motion/fonts` | `ensureFonts`, `fontCatalog`, `fontStack`, `isCatalogFont`, `loadedFontFamilies` |
+| `takumi-motion/recipes` | The four template builders, `bannerTemplates`, `buildTemplate` |
+| `takumi-motion/kit` | `CountUp`, `Typewriter`, `Glow` + number-pattern helpers |
+
+The binary is `takumi-motion` (`package.json` → `bin`), mapped to the compiled CLI.
+
+## Runtime requirements
+
+| Requirement | Detail |
+| --- | --- |
+| Node.js | 22+ (developed against 24) |
+| Engine | `@takumi-rs/core` ≥ 2.17 (peer `@takumi-rs/helpers` ≥ 2.17.0) — the Rust rasterizer arrives as a prebuilt native module |
+| React | 19 (optional peer) |
+| Fonts | takumi bundles Geist Latin by default; register anything else through the fonts API |
+
+## Types worth knowing
+
+| Type | Shape |
+| --- | --- |
+| `TimelineJSON` | `{ version: 1, durationMs, tracks: TrackJSON[], wrap? }` — the interchange format |
+| `AnimationFormat` | `"gif" \| "webp" \| "apng"` |
+| `BannerPreset` | A full surface recipe (width, height, dpr, fps, formats, quality, budget) |
+| `SurfaceSpec` | `{ width, height, dpr, fps, formats, quality, lossless, background, budgetBytes }` |
+| `TakumiStyle` | The typed, engine-verified style property set (`+` explicit `--*` custom props) |
+| `LintWarning` | `{ code, message, hint?, severity }` |
+| `ReactBannerReport` | The full render report — see [Renderers & Reports](/reference/renderers) |
+
+<Aside type="note">
+  Import types with `import type { TimelineJSON } from "takumi-motion"` — the type surface is part of the public contract and versioned with the changelog.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Core Engine API" href="/reference/core-engine" description="The functions behind the root export." />
+
+<LinkCard title="React Components" href="/reference/react-components" description="The authoring surface behind the /react export." />
+
+### Presets, Themes & Fonts
+Source: /reference/presets-and-themes
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Presets are recipes, not constraints — every field they set (width, height, dpr, fps, formats, quality, background, budget) can be overridden per render, and explicit options win.
+
+## Banner presets
+
+| Name | Size | dpr | fps | Formats | WebP quality | Budget |
+| --- | --- | --- | --- | --- | --- | --- |
+| `readme` | 850×200 | 1 | 20 | gif, webp | 82 | 2 MiB |
+| `readme-hd` | 850×200 | 2 | 20 | webp | 82 | 2 MiB |
+| `readme-lean` | 850×200 | 1 | 12 | gif | 78 | 1.25 MiB |
+| `readme-profile` | 850×300 | 1 | 20 | gif, webp | 82 | 2.25 MiB |
+| `readme-wide` | 1280×300 | 1 | 20 | gif, webp | 82 | 3 MiB |
+| `og-card` | 1200×630 | 1 | 20 | gif, webp | 85 | 4 MiB |
+
+Surface engine defaults: dpr 1, fps 30, formats `[gif, webp]`, quality 82, budget 4 MiB. Hard limits: dimension ceiling 8192 px, dpr ≤ 8, fps ≤ 120. `resolveSurface(spec, preset?)` and `resolveBackground()` implement the rules; `deviceSize()` converts logical to device pixels.
+
+## Themes
+
+Seven built-in themes, resolved over `midnight` when partial:
+
+| Name | Character |
+| --- | --- |
+| `midnight` | Default — deep blue-black, calm accent |
+| `github-dark` / `github-light` | GitHub palette pair |
+| `tokyo-night` | Blue-violet on dark (accent `#7aa2f7`, font Sora) |
+| `dracula` | Classic Dracula purples and pinks |
+| `sunburst` | Warm light theme |
+| `paper-mono` | Monochrome paper look |
+
+A `Theme` carries `{ name, bg, text, textDim, textFaint, surface, surfaceBorder, accent, glow, font? }`. Pass a partial object as `ThemeInput` to customize — missing fields complete from `midnight`.
+
+## Font catalog
+
+`ensureFonts(renderer, specs)` registers Google Fonts by name (deduped per renderer); `fontCatalog` groups the curated list:
+
+| Role | Families |
+| --- | --- |
+| display | Space Grotesk, Sora, Outfit, Manrope, Archivo, Inter |
+| mono | JetBrains Mono, IBM Plex Mono, Space Mono, Fira Code |
+| serif | Playfair Display, Lora, Fraunces |
+| body | Inter, Manrope, Noto Sans |
+
+A `FontSpec` is a family name or `{ name, weight?, style?, generic? }`. Variable fonts register with a range: `{ name: "Inter", weight: "100..900" }` — required for `<VariableText>`.
+
+For reproducible builds, vendor files locally: `loadFontFiles` accepts paths, URLs, or `Uint8Array` (TTF/OTF only — WOFF/WOFF2 are rejected). Remote fonts work but trip `TM_FONT_NETWORK` because byte-determinism holds only while the remote bytes do.
+
+## Personalities
+
+Personality presets drive easing curves, stagger, hold bias, and ambient intensity for templates and orchestration helpers:
+
+| Name | Entrance | Stagger | Ambient |
+| --- | --- | --- | --- |
+| `snappy` | backOut, spring 520/26 | 28 ms | 0.8 |
+| `smooth` | easeInOut | 42 ms | 0.6 |
+| `playful` | backOut/circIn, spring 300/17 | 34 ms | 1.0 |
+| `mechanical` | steps(8, end) / steps(6, start) | even 22 ms | 0.35 |
+
+Ambient motion helpers: `ambient(timeline, target, kind, { periodMs, intensity })` adds a mirror-cycle track (`kind: "drift" | "breathe" | "pulse" | "float"` — periods must divide the loop period exactly); `ambientWindow(...)` freezes holds between active windows. Orchestration: `splitGlyphs`, `splitWords`, `revealUnits`, `revealRow`, `waveUnits`, `deceleratingStagger`.
+
+## Banner templates
+
+The `takumi-motion/recipes` export ships four strict-seam recipes — `typewriter`, `countup`, `sweep`, `cascade` — each an async builder returning a `BannerResult { element, timeline, fonts? }`. Shared props: `theme`, `motion`, `font`, `width=850`, `height=200`, `fps=20`, `renderer?`.
+
+| Template | Own props (defaults) | Behavior |
+| --- | --- | --- |
+| `typewriter` | `text` (required), `tagline?`, `accent?`, `background?`, `speed=65` ms/char, `startMs=300`, `holdMs=1500` | Type-in with per-char fade, hold, terminal backspace, blink tail; strict loop |
+| `countup` | `stats` (required: `{ label, value, suffix?, decimals? }[]`), `title?`, `accent?`, `background?`, `steps=6`, `countMs=1200`, `startMs=450`, `holdMs=1800` | Digit-layer crossfade stat columns |
+| `sweep` | `title` (required), `subtitle?`, `secondaryColor="#22d3ee"`, `background?`, `accent?`, `holdMs=1900` | Gradient glow sweep + letter-tracking entrance, fade-out exit |
+| `cascade` | `title` (required), `tagline?`, `accent?`, `background?`, `startMs=260`, `holdMs=1700`, `rise=20` (0..48) | Per-glyph rise+fade with decelerating stagger, accent-rule overshoot, cascade exit |
+
+`buildTemplate({ name, props })` invokes by name; `bannerTemplates` lists the registry.
+
+<Aside type="note">
+  Template results already carry their fonts and theme — pass the whole result to `renderBanner` or the CLI and the renderer registers everything before measuring.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="How presets resolve at render time." />
+
+<LinkCard title="Reduce File Size" href="/guides/reduce-file-size" description="Budgets and the fps ladder in practice." />
+
+### React Components
+Source: /reference/react-components
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+All components import from `takumi-motion/react` (the kinetic kit also from `takumi-motion/kit`). Every component is a pure function of the current frame — no clocks, no `Math.random`.
+
+## Structure
+
+### `<Banner>`
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `preset` | `string \| BannerPreset` | `"readme"` | Surface recipe |
+| `width`, `height` | `number` | preset | Logical canvas overrides |
+| `dpr` | `number` | preset | Device pixel ratio |
+| `background` | `string \| null` | theme bg | `"transparent"`/`null` → alpha canvas |
+| `theme` | `ThemeInput` | `"midnight"` | Theme name or partial theme |
+| `fps` | `number` | preset fps | Frames per second |
+| `fonts` | `FontSpec \| FontSpec[]` | – | Fonts registered before capture |
+| `loop` | `boolean` | `false` | Declares a loop; pair with a `wrap` transition |
+| `transitionMs` | `number` | `250` | Default scene-transition overlap |
+| `tempo` | `number` | `1` | Finite, > 0 — global timeline speedup |
+
+Children must be `<Scene>`, `<Layer>`, or `<Series>` (fragments flatten). At least one scene is required; the maximum is 64.
+
+### `<Scene>`
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `duration` | `number` | required | Frames |
+| `enter`, `exit` | `TransitionInput` | `"cut"` | `"cut" \| "crossfade" \| "slide" \| "rise" \| "push" \| "wrap"` or `{ kind, ms }` |
+| `label` | `string` | – | Unique; enables `useCue("label+12f")` |
+
+`wrap` is honored only on the last scene of a looping banner. `push` never blends — both sides must declare it.
+
+### `<Layer>`
+
+| Prop | Type | Default | Notes |
+| --- | --- | --- | --- |
+| `top` | `boolean` | `true` when neither set | Render above the scene stack |
+| `bottom` | `boolean` | `false` | Render beneath the scene stack |
+
+## Sequencing
+
+| Component | Props | Behavior |
+| --- | --- | --- |
+| `<Sequence>` | `from=0`, `durationInFrames` (rest of scope), `speed=1`, `reverse=false` | Children render only inside the window; absolute frame tracking is preserved |
+| `<Freeze>` | `at` (required) | Children see frame `at` forever |
+| `<Series>` | children only | Flat list of `<Series.Sequence>`; nesting errors |
+| `<Series.Sequence>` | `durationInFrames` (required), `enter`/`exit="cut"` | Stacks scenes back-to-back |
+| `<Loop>` | `durationInFrames` (required ≥ 1), `times=Infinity`, children or `(iteration) => ReactNode` | Repeats its subtree; also the child's `useDuration` |
+
+## Text and content
+
+| Component | Props (defaults) | Notes |
+| --- | --- | --- |
+| `<SplitText>` | `text`, `by="chars" \| "words"`, `renderUnit` | Splits into `TextUnit`s `{text, index, total, isSpace}` |
+| `<FitText>` | `text`, `maxWidth` (canvas − 32), `fontWeight=400`, `max=64`, `min=18`, `pad=0.985` | Largest engine-measured size that fits; outside the runtime → `max` + `TM_FITTEXT_UNMEASURED` |
+| `<Fill>` | `style` | Absolute inset-0 flex container — centering works by default |
+| `<Img>` | `src` (string data URI or `Buffer`), `mime="image/png"`, `width`, `height`, `alt`, `style` | Resolve files with `imageDataUriFromFile()` before capture |
+| `<CountUp>` | `to`, `from=0`, `durationFrames` (scene), `delayFrames=0`, `spring?`, `ease="easeOut"`, `format` | Pattern grammar: `"$,.0f"`, `",.1f%"`, `"ms"`; `tabular-nums` forced |
+| `<Typewriter>` | `text`, `durationFrames` (scene − 12), `delayFrames=0`, `cursor=true`, `cursorPeriodFrames=15`, `cursorColor="currentColor"` | Cursor is an em-sized currentColor block that blinks |
+| `<Glow>` | `color="#38bdf8"`, `size=220`, `x=0`, `y=0`, `blur=44`, `opacity=0.14` | Defaults encode the size doctrine; mind `TM_GLOW_GIF_DITHER` |
+
+## Motion vocabulary
+
+| Component | Props (defaults) | Notes |
+| --- | --- | --- |
+| `<Animated>` | `entering?`, `exiting?`, `style` | Wraps a plain `div`; settles to **no** style overrides |
+| `<Keyframes>` | `frames` (`{ [frame]: { ...channels, easing? } }`), `style` | Properties fill forward; colors mix in OKLCH |
+| `<Camera>` | `pushIn?`, `pan?`, `shake?`, `transformOrigin?` | `shake` amplitude 3, frequency 0.2 — aliasing above 0.5 trips `TM_NOISE_ALIASED` |
+| `<Wiggle>` | `amplitude=4`, `seed`, `rotateAmplitude=0` | Per-frame noise offset |
+| `<FollowPath>` | `d`, `durationFrames`, `delayFrames=0`, `easing="easeInOut"`, `rotate={false \| "auto" \| number}` | Moves along an SVG path |
+| `<Morph>` | `from`, `to`, `itemIds`, `renderItem`, `switchFrame=0`, `durationFrames=14`, `staggerFrames=0`, `contentSwitchAt=0.5`, `containerStyle?`, `itemStyle?` | Measured FLIP through position+size channels — no scale, no text stretching; unmeasured → `TM_MORPH_UNMEASURED` |
+| `<Particles>` | `count=24` (≤ 256), `mode="sparkle" \| "confetti"`, `seed=1`, `colors`, `size`, `area`, `burstFrames?`, `gravity=0.35`, `speed=2.4`, `twinklePeriodFrames=16`, `opacity=0.9` | Closed-form per-frame particles; confetti without `burstFrames` trips `TM_PARTICLE_CHURN` |
+
+Enter/exit presets (26 total, e.g. `FadeInDown`, `ZoomIn`) chain with `.duration(frames)`, `.delay(frames)`, `.springify(presetOrOptions)`; `staggered(preset, index, opts)` bakes stagger; `defineTransition({ name, side, channels, durationFrames, easing })` declares custom ones. Segments compose with `chain(...)` and `hold(frames)`.
+
+## Charts
+
+| Component | Props (defaults) | Notes |
+| --- | --- | --- |
+| `<LineChart>` | `data?`, `draw="reveal" \| "none"`, `drawDurationFrames=40`, `drawDelayFrames=6`, `area=false`, `grid=true`, `showPoints`, `showLabels`, `yTicks=4`, `strokeWidth=3` | One static SVG + per-frame clip-path sweep |
+| `<BarChart>` | `data?`, `orientation="up" \| "right"`, `stagger=true`, `spring`, `showValues=true`, `formatValue`, `showLabels`, `gap=8`, `radius=6` | Bars grow with staggered springs from the measured plot box |
+| `<Donut>` | `value` (0..1, required), `size=140`, `thickness=size×0.14`, `color`, `trackColor`, `holeColor`, `paint="transform" \| "conic"`, `drawDurationFrames=36`, `center?` | `transform` is palette-safe; `conic` is the gradient alternative |
+
+Charts read the data channel via `useChartData` when the `data` prop is absent. Data shape: `ChartData = { series: [{ name, color, points }], labels?, max? }`; helpers `niceMax()`, `compactNumber()`.
+
+## Material pack
+
+| Component | Props (defaults) | Notes |
+| --- | --- | --- |
+| `<Reveal>` | `wipe="left" \| "right" \| "up" \| "down" \| "circle"` (default `"right"`), `drawDurationFrames=30`, `drawDelayFrames=0`, `feather=0` | Animated mask gradient; `feather=0` is palette-safe |
+| `<Mask>` | `image?`, `fade="top" \| "bottom" \| "left" \| "right"`, `fadeLength=24`, `mode="alpha" \| "luminance" \| "match-source"` | Exactly one of `image`/`fade` required |
+| `<VariableText>` | `text`, `from=300`, `to=800`, `durationFrames=24`, `axis="wght"`, `fontSize?` | Requires a variable font registered with a weight range |
+| `<GradientText>` | `text`, `gradient` (linear-gradient), `fontSize?`, `fontWeight?` | Static `background-clip: text` fill |
+
+<Aside type="caution">
+  The particles ship as one component: `<Particles mode="sparkle">` and `<Particles mode="confetti">`. There are no `<Sparkle>` or `<Confetti>` elements.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Hooks & Motion Math" href="/reference/hooks" description="useFrame, useSpring, useInterpolate, and the pure companions." />
+
+<LinkCard title="Lint Codes" href="/reference/lint-codes" description="What each component can warn about during capture." />
+
+### Renderers & Reports
+Source: /reference/renderers
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Every renderer returns a report object — the report is the API. All of them are deterministic: same inputs produce the same bytes at any concurrency and any worker count.
+
+## `renderBanner` — declarative path
+
+```ts
+const report = await renderBanner({
+  node,              // takumi node tree, or a React-shaped element
+  timeline,          // TimelineJSON (timeline.toJSON())
+  preset: "readme",  // explicit options win over the preset
+  outDir: "./out",   // omit to receive buffers only
+  baseName: "banner",
+});
+```
+
+Key options beyond the surface fields: `formats?`, `fps?`, `posters?` (default one at 60% of the timeline; `false` to skip), `fonts?`, `webpQuality?`/`quality?`, `lossless?`, `budgetBytes?`, `collapseGifHolds?` (default `true`), `sequence?`, `spriteSheet?`, `parallel?` (default `true`).
+
+`BannerReport` fields: `preset`, `width`, `height`, `devicePixelRatio`, `physicalWidth`, `physicalHeight`, `fps`, `frames`, `durationMs`, `files[]` (`{ path, format, bytes, ms, withinBudget, frames, buffer }`), `posters[]`, `collapse` (`framesBefore/After`, `bytesBefore/After`), `fonts`, `totalBytes`, `budgetBytes`, `overBudget`, `warnings`, `surface`, `lint`, `sequence?`, `spriteSheet?`. `formatReport(report)` renders the human-readable text.
+
+## `renderReactBanner` — React path
+
+```ts
+const report = await renderReactBanner({
+  banner: MyBanner,           // or bannerModule: "./banner.tsx" (enables workers)
+  workers: "auto",
+  formats: ["webp"],
+  outDir: "./out",
+});
+```
+
+Options: `banner` xor `bannerModule`, `workers?: number | "auto"`, `preset?`, `fps?`, `formats?`, `outDir?`, `baseName?`, `fonts?`, `posters?` (default: frame 0 for loops, else the settled 60% frame), `collapseGifHolds?`, `safeZone?` (8), `sequence?`, `spriteSheet?`, `parallel?`, `concurrency?`, `fromFrame?`/`toFrame?`, `data?`, `explain?: boolean`, plus `SurfaceSpec` fields.
+
+Everything `BannerReport` carries, plus:
+
+| Field | Meaning |
+| --- | --- |
+| `scenes` | Planned scene windows |
+| `chunks` | Byte-identical frame chunks after merging |
+| `extents` | `{ canvas, safeZonePx, chunksChecked, transitionChunksSkipped, violations[] }` |
+| `seam` | `{ mode: "exact" \| "differs", loop }` — byte-checked |
+| `timings` | `{ captureMs, parseMs, auditMs, encodeMs, totalMs }` |
+| `lint` | Coded warnings (`TM_*`) with hints |
+| `window` | The `[from, to)` frame window that ran |
+| `explain?` | Per-frame channel attribution when `explain: true` |
+
+## `renderStill` — one PNG, any source
+
+```ts
+const still = await renderStill({ banner: MyBanner });           // react
+const still = await renderStill({ html, css });                  // raw HTML
+const still = await renderStill({ node, timeline });             // declarative
+```
+
+Options: `frame?` (default: settled ~60% frame; frame 0 for HTML), `width`/`height`/`dpr`/`fps`, `quality`/`lossless`, `budgetBytes?`, `fonts?`/`fontFiles?`, `outDir?` (writes `<base>.png`), `concurrency?`. Returns `{ source, frame, timeMs, width, height, devicePixelRatio, physicalWidth, physicalHeight, background, png, bytes, ms, path }`.
+
+## `renderSpriteSheet` and `exportFrameSequence`
+
+| Renderer | Options | Result |
+| --- | --- | --- |
+| `renderSpriteSheet(renderer, source, opts)` | `columns?` (default `ceil(√n)`), `every?` (1), `maxPixels?` (64M), `concurrency?` | Atlas PNG + metadata `{ version, frameWidth, frameHeight, columns, rows, frameCount, fps, frames[], css }` — `meta.css` is a ready-to-paste `steps()` recipe |
+| `exportFrameSequence(renderer, source, opts)` | `outDir` (required), `dirName="sequence"`, `every=1`, `baseName="frame"`, `concurrency?` | `frame_00000.png` files + `frames.json` manifest containing an ffmpeg one-liner; identical-frame runs render once and rewrite bytes per file |
+
+## `renderHtmlAnimation` — raw HTML source
+
+```ts
+const report = await renderHtmlAnimation({
+  html,              // fragment or full document (<style> hoisted)
+  css?,              // extra stylesheet(s)
+  frames: 30,
+  outDir: "./out",
+});
+```
+
+Returns `HtmlSourceReport` with `surface`, `frames`, `durationMs`, `cssEntries`, `styleBlocksHoisted`, `files`, `posters`, `fonts`, `fontFiles`, `totalBytes`, `budgetBytes`, `overBudget`, `warnings`, `collapse`.
+
+## `renderWithAudit` — audit as data
+
+```ts
+import { renderWithAudit } from "takumi-motion/audit";
+
+const { report, audit, exitCode, formatted } = await renderWithAudit({
+  banner: MyBanner,          // or node+timeline, or html+css
+  preset: "readme",
+  budgetBytes: 2 * 1024 * 1024,
+  outDir: "./out",
+});
+```
+
+`AuditReport`: `generator`, `generatorVersion`, `source`, `surface`, `timeline { frames, durationMs }`, `budget { budgetBytes, totalBytes, overBudget, files[] }`, `extents { checked, violations[], hardFailures }`, `seam { mode, loop }`, `determinism { deterministic, checkedBytes, detail }`, `warnings`. Exit codes: `0` pass, `1` content failure, `2` over budget. The determinism probe performs a full second render and byte-compares the first poster.
+
+## `renderKit` — the full asset set
+
+```ts
+const kit = await renderKit(bannerResult, {
+  outDir: "./assets",
+  presets: ["readme", "readme-hd", "readme-lean"], // default
+});
+```
+
+Returns `KitReport { variants[], files[] ({ path, role }), totalBytes }` and writes `<base>-<preset>.<ext>` plus `banner-static.png` — a reduced-motion twin. The CLI exits 2 when any variant exceeds its budget. Declarative banners only.
+
+## Concurrency primitives
+
+| Function | Behavior |
+| --- | --- |
+| `resolveConcurrency(limit?)` | Validated int (cap 64) or `min(availableParallelism(), 8, 64)` |
+| `mapWithConcurrency(items, limit, fn)` | Sliding-window map preserving input order |
+| `resolveWorkers(option, frameCount, estimatedWorkMs)` | The `"auto"` gate: cores ≥ 4, frames ≥ 128, work ≥ 400 ms; cap 16 |
+| `windowGrid(total, workers)` | Even frame windows for the pool |
+
+<Aside type="note">
+  Output bytes are identical at any concurrency or worker count — parallelism changes wall-clock time only. The determinism probe in `renderWithAudit` exists to catch impurities that would break that promise.
+</Aside>
+
+## Next steps
+
+<LinkCard title="CLI" href="/reference/cli" description="Every flag mapped to these options." />
+
+<LinkCard title="Determinism" href="/explanation/determinism" description="What the byte-identical guarantee rests on." />
+
+
+## Concepts
+
+Architecture, determinism, performance, and size doctrine.
+
+### Architecture
+Source: /explanation/architecture
+
+import { Aside, LinkCard, FileTree } from '@astrojs/starlight/components';
+
+Takumi Motion is a bridge between two worlds: high-level React (or raw HTML) authoring, and a Rust rasterizer that renders CSS-style layouts natively. The bridge is deliberately narrow — a JSON timeline, a static markup tree per frame, and integer milliseconds.
+
+## The pipeline
+
+```text
+AUTHOR    React components or templates produce a node tree + TimelineJSON
+PLAN      Scene windows, transitions, and frame grids resolve up front
+CAPTURE   Each frame renders to static markup (pure function of frame index)
+COMPILE   The timeline bakes onto a shared fps grid (CSS keyframes)
+RASTER    The Rust engine (takumi) renders markup + styles to pixels
+ENCODE    GIF / WebP / APNG encoders emit files; post-processing runs
+```
+
+Four properties hold everywhere:
+
+- **Determinism** — `Math.random` is frame-seeded, engine time is integer ms, and no network or clock reads happen during render. Same input, same bytes.
+- **Ahead-of-time timelines** — nothing animates "live". The engine samples authored tracks at frame indices and merges byte-identical frames into chunks.
+- **Rust rasterization** — the takumi engine (via `@takumi-rs/core`, a prebuilt native module) lays out and paints each frame; no headless browser exists in the pipeline.
+- **The report is the API** — every render returns its files, budgets, lint findings, seam verdict, and timings as data.
+
+## Capture lifecycle in detail
+
+```text
+PROBE    <Banner> registers meta + scene inputs (children do not render yet)
+PLAN     planBanner() computes frame-exact scene windows
+PREWARM  each scene's opening frame renders once (FitText/Morph discovery;
+         outputs are discarded — components may see one extra render per scene)
+FRAMES   the real per-frame loop produces the markup that gets encoded
+CHUNK    byte-identical adjacent frames merge
+LINT     style trees + markup + registry findings assemble report.lint
+```
+
+The prewarm pass is why `<FitText>` and `<Morph>` can measure through the real renderer and still render synchronously in the frame loop. Prewarm outputs never reach the encoder.
+
+## Source surface map
+
+<FileTree>
+- src/content/docs (site pages)
+- takumi-motion (the package)
+  - index.ts — root export: engine + renderers + audit + kit
+  - react/ — primitives, hooks, capture runtime, parallel workers
+  - templates/ — the four banner recipes
+  - cli.ts — the terminal surface
+</FileTree>
+
+The package's public surface splits by intent:
+
+| Concern | Where it lives |
+| --- | --- |
+| Authoring in React | `takumi-motion/react` |
+| Authoring without React | `createTimeline` + `h` (root) or `takumi-motion/recipes` |
+| Rendering | `renderBanner`, `renderReactBanner`, `renderHtmlAnimation`, `renderStill`, sprite/sequence exporters |
+| Verification | `renderWithAudit`, `checkBanner`, `auditExtents`, lint channel, `explainCapture` |
+| Terminal | the `takumi-motion` binary |
+
+## Why not a browser?
+
+A headless browser brings nondeterminism (font hinting, timers, layout races), heavy startup cost, and a byte-output floor. The Rust engine renders the same CSS subset natively and fast — the v1.0 benchmarks record an 80-frame banner end-to-end in ~37 ms, serial. The trade is a bounded style property set (`SUPPORTED_STYLE_PROPS`), which the type system and the `TM_UNKNOWN_STYLE_PROP` lint make explicit.
+
+<Aside type="note">
+  This docs site is itself a separate codebase (Astro Starlight). The repository you clone contains the engine; the site ships in its own archive with its own build.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Determinism" href="/explanation/determinism" description="The frame model that makes byte-exact output possible." />
+
+<LinkCard title="Performance & Size" href="/explanation/performance-and-size" description="What the Velocity pass changed and why it matters." />
+
+### Determinism
+Source: /explanation/determinism
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+"Deterministic" is the product. This page explains the mechanisms that make every render byte-reproducible — and the rules your code must follow to keep them intact.
+
+## The frame model
+
+Every frame is a pure function of `(frame, props)`:
+
+- Frames are integers. Time enters the engine only as whole milliseconds (`toEngineMs` clamps and floors at every boundary — fractional `timeMs` is rejected by the Rust side).
+- Hooks and components read the frame, never the clock: `useFrame()`, `useCurrentFrame()`, `useAbsoluteFrame()`. There is no `Date.now()` in the runtime and none is allowed in your components.
+- Replays are exact: frame 137 of a render is identical to frame 137 of any other render of the same input, whether it happens locally, in CI, or inside a worker window.
+
+## Seeded randomness
+
+`Math.random()` is shimmed during capture to `mulberry32(seed ⊕ imul(frame))` — each frame's PRNG stream starts fresh from its own seed. Consequences:
+
+- Random motion (particles, wiggle, confetti) replays byte-identically at any frame index, in any order, across any number of workers.
+- The v1.0 shim is per-frame: a stream does not continue across frames. Code that consumed growing randomness across frames must seed explicitly (`useRandom(seed, salt)`).
+- Authoring code should use `useRandom`/`randomFor` directly — calling `Math.random` works only while the shim covers it and hides the seed from the system.
+
+## Integer engine time and the fps grid
+
+The compile step bakes every track onto a shared fps grid plus structural boundaries, so the engine sees whole-millisecond times only. Springs are the exception worth knowing: they are solved analytically per sample (no grid), with settle thresholds from Motion's physics (`restSpeed`, `restDelta`). `springSettleFrames(fps, options)` tells you when a spring stops moving visually — if that exceeds the scene window, the `TM_TRANSITION_UNSETTLED` lint fires.
+
+## The determinism probe
+
+`renderWithAudit` renders twice and byte-compares the first poster:
+
+```json
+{
+  "determinism": {
+    "deterministic": true,
+    "checkedBytes": 18432,
+    "detail": "poster @ 1500ms byte-identical across renders"
+  }
+}
+```
+
+`deterministic: false` is a hard alarm — it means an input varied between renders. The usual culprits, in order of likelihood:
+
+1. A network fetch or `Date.now()` inside a render function.
+2. Remote (Google) fonts — their bytes can change upstream; vendor TTF/OTF locally (the `TM_FONT_NETWORK` lint warns).
+3. Unseeded `Math.random` outside the shimmed capture stages.
+
+## Parallel capture keeps the promise
+
+Workers render frame windows concurrently, yet output stays byte-identical to serial capture at any worker count. The mechanisms:
+
+- Plan agreement — every worker asserts it derived the same scene plan before rendering.
+- Frame-seeded randomness (above) — window boundaries cannot shift PRNG streams.
+- Single re-merge — windows concatenate and re-chunk once on the main thread.
+
+The repository's golden tests assert this invariant, and `renderWithAudit`'s probe verifies it per render.
+
+<Aside type="caution">
+  Determinism is why some conveniences are absent: no live clocks, no network fetches at render, no unseeded randomness, no WOFF fonts (their bytes would have to be trusted upstream). Each restriction buys a byte-exact guarantee.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Parallel Capture" href="/guides/parallel-capture" description="Using workers without giving up byte-identity." />
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="renderWithAudit's audit object in full." />
+
+### Performance & Size
+Source: /explanation/performance-and-size
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+The v1.0 release ("Velocity") is a performance pass over the frozen v0.9.1 pipeline, differential-tested byte-identical — every optimization changed speed, never output. This page records what changed, the measured wins, and the size doctrine that guides the encoders.
+
+## What got faster
+
+The pipeline is React/HTML → `renderToStaticMarkup` per frame → chunk merge → `fromHtml` (napi) → `renderAnimation` (Rust, rayon) → encode → post-process. The Velocity pass removed four classes of waste:
+
+| Change | Mechanism | Hot path |
+| --- | --- | --- |
+| Solver memoization | Spring generators and settle durations memoize on transition params | `springFor` — every Animated/spring per frame |
+| Binary-search tween sampling | Per-segment easings precomputed once; O(log n) segment lookup | compile bake, evaluators |
+| Identity-memoized tracks | `resolveTrack` memoizes on object identity (WeakMap); target-indexed transform maps | `evaluateAt` |
+| Color parse memo | `parseToRgba` results memoize (bounded) | per-frame color mixing |
+| Structural compile dedupe | fps grid built once and shared; structural step dedupe replaces per-point `JSON.stringify` | `compileTimeline` |
+| Binary-search chunk index | One shared O(log n) frame→chunk helper | posters, sequences, sprite sheets, filmstrips, storyboards |
+| Zero-copy GIF passes | `subarray` views + native `memcmp` (`Buffer#equals`) for holds ≥ 64 bytes | GIF hold collapse |
+| PNG min-SAD filter | Standard minimum-sum-of-absolute-differences per-row filter heuristic + deflate level 9 | sprite/sequence encoders |
+
+## Measured (Node 24, linux x64, median of 9 runs)
+
+| Bench | Baseline | v1.0 | Speedup |
+| --- | --- | --- | --- |
+| Chunk index: 200k lookups over 400 chunks | 37.4 ms | 5.3 ms | **7.07×** |
+| Spring: 3000 samples, 20 configs | 4.4 ms | 1.1 ms | **3.87×** |
+| evaluateAt: 400 sweeps × 5 tracks | 2.8 ms | 0.9 ms | **3.14×** |
+| Color mix: 50k mixes | 25.4 ms | 9.6 ms | **2.65×** |
+| Capture: 80-frame banner (probe→chunk) | 6.6 ms | 3.6 ms | **1.84×** |
+| End-to-end: 80f banner, serial | 53.5 ms | 37.3 ms | **1.43×** |
+| PNG atlas bytes (850×400 gradient) | 767 KiB | 2.0 KiB | **−100%** |
+| **Geometric mean (13 timed benches)** | | | **1.71×** |
+
+Two honest losses: PNG encode CPU rose 33% on the atlas bench (the min-SAD heuristic costs time to save bytes), and `workers: 4` on a 2-core host measured 0.88× — the reason the auto gate exists.
+
+## The size doctrine
+
+Encoded size is per-frame delta × frames. The engine's design keeps both terms low:
+
+- **Settled descriptors emit nothing.** Once an enter/exit transition or spring settles, wrappers stop emitting style overrides, so identical frames chunk-merge into zero-delta holds. The GIF pass rewrites holds as longer frame delays; the report's `collapse` block quantifies it.
+- **Finite churn only.** Confetti bursts settle at `burstFrames`; unbounded fields trip `TM_PARTICLE_CHURN`. A GIF that never stops moving never compresses.
+- **Integer, quantized values.** Emitted values round to 6 decimals; color outputs are integer-channel `rgb()` — palette quantizers round anyway, and stable values keep the chunk-merger effective.
+- **Cheap channels preferred.** Opacity and clip changes are cheap; layout, text, and structure churn re-encode whole regions. The X-ray (`--explain`) attributes each frame to its channel so you can see which term you are paying for.
+- **Format choice is a size lever.** WebP for gradients and glow, dpr 2 when host platforms re-compress anyway, `readme-lean` when bytes dominate. The [size guide](/guides/reduce-file-size) turns each lever into steps.
+
+<Aside type="note">
+  The benchmarks live in the repository (`docs/BENCHMARKS.md`) with the frozen baseline in `bench/baseline/` — a verbatim copy of the v0.9.1 tree — so every number above is reproducible from the source.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Reduce File Size" href="/guides/reduce-file-size" description="Applying the doctrine to your banners." />
+
+<LinkCard title="Parallel Capture" href="/guides/parallel-capture" description="The worker-pool gate and when it wins." />
+
+
+## Home (/)
+
+import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
+
+Takumi Motion compiles animation timelines ahead of time, captures frames deterministically, and delegates rasterization to a Rust backend. No headless browser, no layout thrashing, no nondeterministic replays — the same input produces the same bytes, every time.
+
+## Choose your path
+
+<CardGrid stagger>
+  <Card title="Your first banner" color="#DF4D24">
+    Install the package, define a React banner, and render it to WebP in one sitting.
+  </Card>
+  <Card title="Declarative banners" color="#A8381A">
+    Skip JSX entirely — compose banner recipes from templates and render from TypeScript.
+  </Card>
+  <Card title="Automate quality gates" color="#DF4D24">
+    Wire `takumi-motion check` and byte budgets into CI so broken banners never merge.
+  </Card>
+  <Card title="Ship smaller files" color="#A8381A">
+    Use the X-ray, budget ladder, and size doctrine to cut GIF/WebP bytes by an order of magnitude.
+  </Card>
+</CardGrid>
+
+## Why Takumi Motion
+
+- **Deterministic by construction** — `Math.random` is frame-seeded, engine time is integer milliseconds, and every frame is a pure function of `(frame, props)`. Outputs are byte-identical across runs, worker counts, and machines.
+- **Rust-fast rendering** — the takumi engine rasterizes CSS-style layouts in native code. The v1.0 *Velocity* pass lifted the hot path by a geometric mean of **1.71×** across 13 benchmarks.
+- **Author in React** — banners are ordinary React trees with `<Scene>` and `<Layer>` primitives, Motion-compatible springs and easings, and frame-driven hooks.
+- **Quality tooling built in** — a coded authoring lint (`TM_*`), per-frame X-ray attribution, extent auditing, and loop-seam verification ride along with every render report.
+
+<Aside type="tip">
+  Read [Determinism](/explanation/determinism) if you have ever shipped an animated banner that rendered differently in CI than locally — Takumi Motion removes that entire class of bug.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Your First Banner" href="/tutorials/first-banner" description="A complete walkthrough from install to a rendered WebP badge." />
+
+<LinkCard title="CLI Reference" href="/reference/cli" description="Every command and flag the takumi-motion binary supports." />
+
+<LinkCard title="Architecture" href="/explanation/architecture" description="How authoring, capture, and the Rust engine fit together." />

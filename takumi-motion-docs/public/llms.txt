@@ -1,0 +1,49 @@
+# Takumi Motion
+
+> Deterministic server-side animation engine: React or HTML -> GIF/WebP/APNG/PNG-sequence/sprite-sheet/still, rendered by the Rust takumi engine.
+
+Documentation built with Astro Starlight, structured after the Diátaxis framework.
+
+## Tutorials
+
+Guided walkthroughs for first-time users.
+
+- [Declarative Banners](/tutorials/declarative-banners): Compose and render banners from templates and timelines — no React components required.
+- [Your First Banner](/tutorials/first-banner): Install takumi-motion, define a React banner, and render it to a deterministic WebP in one sitting.
+
+## How-to Guides
+
+Task-oriented recipes for specific goals.
+
+- [CI Quality Gates](/guides/ci-quality-gates): Fail builds on layout shifts, seam breaks, and byte budgets with takumi-motion check and renderWithAudit.
+- [Data-Driven Animations](/guides/data-driven-animations): Inject static data at setup and render deterministic charts, count-ups, and stats — no network fetches at render time.
+- [Parallel Capture](/guides/parallel-capture): Speed up heavy banners with worker-pool capture — byte-identical output at any worker count.
+- [Preview and Inspect](/guides/preview-and-inspect): Choose between filmstrips, CSS previews, storyboards, and stills to verify banners before shipping.
+- [Reduce File Size](/guides/reduce-file-size): Cut GIF and WebP bytes with the budget ladder, hold collapse, the X-ray, and the size doctrine.
+- [Render Raw HTML](/guides/render-from-raw-html): Turn a plain HTML fragment with CSS into deterministic GIF, WebP, APNG, or still outputs — no React involved.
+- [Seamless Loops](/guides/seamless-loops): Make banners repeat forever with byte-identical first and last frames — wrap seams, loop utilities, and the seam audit.
+
+## Reference
+
+API surface: CLI, components, hooks, engine, renderers, lint codes.
+
+- [CLI](/reference/cli): Every takumi-motion command and flag — render, check, preview, storyboard, init, templates, presets, fonts.
+- [Core Engine API](/reference/core-engine): createTimeline, compileTimeline, evaluateAt, springs, inertia, easings, interpolation, and OKLCH color.
+- [Hooks & Motion Math](/reference/hooks): Frame context hooks and their pure, hook-free companions — springs, interpolation, pulses, noise, and stagger.
+- [Lint Codes](/reference/lint-codes): Every TM_* authoring lint code — what it catches, why it matters, and the fix it hints at.
+- [Package Exports](/reference/package-exports): The subpath export map of takumi-motion — what each entry point exposes and the runtime requirements.
+- [Presets, Themes & Fonts](/reference/presets-and-themes): Banner presets, themes, font catalog, personalities, and the four banner templates with their props.
+- [React Components](/reference/react-components): Props and defaults for every component in the takumi-motion/react runtime — Banner, Scene, Layer, charts, materials, particles, and more.
+- [Renderers & Reports](/reference/renderers): Options and report shapes for renderBanner, renderReactBanner, renderStill, renderWithAudit, sprite sheets, frame sequences, and HTML.
+
+## Concepts
+
+Architecture, determinism, performance, and size doctrine.
+
+- [Architecture](/explanation/architecture): How authoring, capture, compilation, and the Rust rasterizer connect — from React tree to encoded bytes.
+- [Determinism](/explanation/determinism): The frame model, seeded randomness, integer engine time, and the byte-identical guarantee.
+- [Performance & Size](/explanation/performance-and-size): What the v1.0 Velocity pass optimized, the benchmark numbers, and the size doctrine behind the encoders.
+
+## Home
+
+- [Overview](/): Deterministic server-side animation engine — React or HTML in, GIF/WebP/APNG/sprite-sheet/still out, rendered by Rust.

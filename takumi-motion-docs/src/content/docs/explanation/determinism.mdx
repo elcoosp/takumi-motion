@@ -1,0 +1,69 @@
+---
+title: Determinism
+description: The frame model, seeded randomness, integer engine time, and the byte-identical guarantee.
+type: explanation
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+"Deterministic" is the product. This page explains the mechanisms that make every render byte-reproducible — and the rules your code must follow to keep them intact.
+
+## The frame model
+
+Every frame is a pure function of `(frame, props)`:
+
+- Frames are integers. Time enters the engine only as whole milliseconds (`toEngineMs` clamps and floors at every boundary — fractional `timeMs` is rejected by the Rust side).
+- Hooks and components read the frame, never the clock: `useFrame()`, `useCurrentFrame()`, `useAbsoluteFrame()`. There is no `Date.now()` in the runtime and none is allowed in your components.
+- Replays are exact: frame 137 of a render is identical to frame 137 of any other render of the same input, whether it happens locally, in CI, or inside a worker window.
+
+## Seeded randomness
+
+`Math.random()` is shimmed during capture to `mulberry32(seed ⊕ imul(frame))` — each frame's PRNG stream starts fresh from its own seed. Consequences:
+
+- Random motion (particles, wiggle, confetti) replays byte-identically at any frame index, in any order, across any number of workers.
+- The v1.0 shim is per-frame: a stream does not continue across frames. Code that consumed growing randomness across frames must seed explicitly (`useRandom(seed, salt)`).
+- Authoring code should use `useRandom`/`randomFor` directly — calling `Math.random` works only while the shim covers it and hides the seed from the system.
+
+## Integer engine time and the fps grid
+
+The compile step bakes every track onto a shared fps grid plus structural boundaries, so the engine sees whole-millisecond times only. Springs are the exception worth knowing: they are solved analytically per sample (no grid), with settle thresholds from Motion's physics (`restSpeed`, `restDelta`). `springSettleFrames(fps, options)` tells you when a spring stops moving visually — if that exceeds the scene window, the `TM_TRANSITION_UNSETTLED` lint fires.
+
+## The determinism probe
+
+`renderWithAudit` renders twice and byte-compares the first poster:
+
+```json
+{
+  "determinism": {
+    "deterministic": true,
+    "checkedBytes": 18432,
+    "detail": "poster @ 1500ms byte-identical across renders"
+  }
+}
+```
+
+`deterministic: false` is a hard alarm — it means an input varied between renders. The usual culprits, in order of likelihood:
+
+1. A network fetch or `Date.now()` inside a render function.
+2. Remote (Google) fonts — their bytes can change upstream; vendor TTF/OTF locally (the `TM_FONT_NETWORK` lint warns).
+3. Unseeded `Math.random` outside the shimmed capture stages.
+
+## Parallel capture keeps the promise
+
+Workers render frame windows concurrently, yet output stays byte-identical to serial capture at any worker count. The mechanisms:
+
+- Plan agreement — every worker asserts it derived the same scene plan before rendering.
+- Frame-seeded randomness (above) — window boundaries cannot shift PRNG streams.
+- Single re-merge — windows concatenate and re-chunk once on the main thread.
+
+The repository's golden tests assert this invariant, and `renderWithAudit`'s probe verifies it per render.
+
+<Aside type="caution">
+  Determinism is why some conveniences are absent: no live clocks, no network fetches at render, no unseeded randomness, no WOFF fonts (their bytes would have to be trusted upstream). Each restriction buys a byte-exact guarantee.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Parallel Capture" href="/guides/parallel-capture" description="Using workers without giving up byte-identity." />
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="renderWithAudit's audit object in full." />

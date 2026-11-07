@@ -1,0 +1,59 @@
+---
+title: Performance & Size
+description: What the v1.0 Velocity pass optimized, the benchmark numbers, and the size doctrine behind the encoders.
+type: explanation
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+The v1.0 release ("Velocity") is a performance pass over the frozen v0.9.1 pipeline, differential-tested byte-identical — every optimization changed speed, never output. This page records what changed, the measured wins, and the size doctrine that guides the encoders.
+
+## What got faster
+
+The pipeline is React/HTML → `renderToStaticMarkup` per frame → chunk merge → `fromHtml` (napi) → `renderAnimation` (Rust, rayon) → encode → post-process. The Velocity pass removed four classes of waste:
+
+| Change | Mechanism | Hot path |
+| --- | --- | --- |
+| Solver memoization | Spring generators and settle durations memoize on transition params | `springFor` — every Animated/spring per frame |
+| Binary-search tween sampling | Per-segment easings precomputed once; O(log n) segment lookup | compile bake, evaluators |
+| Identity-memoized tracks | `resolveTrack` memoizes on object identity (WeakMap); target-indexed transform maps | `evaluateAt` |
+| Color parse memo | `parseToRgba` results memoize (bounded) | per-frame color mixing |
+| Structural compile dedupe | fps grid built once and shared; structural step dedupe replaces per-point `JSON.stringify` | `compileTimeline` |
+| Binary-search chunk index | One shared O(log n) frame→chunk helper | posters, sequences, sprite sheets, filmstrips, storyboards |
+| Zero-copy GIF passes | `subarray` views + native `memcmp` (`Buffer#equals`) for holds ≥ 64 bytes | GIF hold collapse |
+| PNG min-SAD filter | Standard minimum-sum-of-absolute-differences per-row filter heuristic + deflate level 9 | sprite/sequence encoders |
+
+## Measured (Node 24, linux x64, median of 9 runs)
+
+| Bench | Baseline | v1.0 | Speedup |
+| --- | --- | --- | --- |
+| Chunk index: 200k lookups over 400 chunks | 37.4 ms | 5.3 ms | **7.07×** |
+| Spring: 3000 samples, 20 configs | 4.4 ms | 1.1 ms | **3.87×** |
+| evaluateAt: 400 sweeps × 5 tracks | 2.8 ms | 0.9 ms | **3.14×** |
+| Color mix: 50k mixes | 25.4 ms | 9.6 ms | **2.65×** |
+| Capture: 80-frame banner (probe→chunk) | 6.6 ms | 3.6 ms | **1.84×** |
+| End-to-end: 80f banner, serial | 53.5 ms | 37.3 ms | **1.43×** |
+| PNG atlas bytes (850×400 gradient) | 767 KiB | 2.0 KiB | **−100%** |
+| **Geometric mean (13 timed benches)** | | | **1.71×** |
+
+Two honest losses: PNG encode CPU rose 33% on the atlas bench (the min-SAD heuristic costs time to save bytes), and `workers: 4` on a 2-core host measured 0.88× — the reason the auto gate exists.
+
+## The size doctrine
+
+Encoded size is per-frame delta × frames. The engine's design keeps both terms low:
+
+- **Settled descriptors emit nothing.** Once an enter/exit transition or spring settles, wrappers stop emitting style overrides, so identical frames chunk-merge into zero-delta holds. The GIF pass rewrites holds as longer frame delays; the report's `collapse` block quantifies it.
+- **Finite churn only.** Confetti bursts settle at `burstFrames`; unbounded fields trip `TM_PARTICLE_CHURN`. A GIF that never stops moving never compresses.
+- **Integer, quantized values.** Emitted values round to 6 decimals; color outputs are integer-channel `rgb()` — palette quantizers round anyway, and stable values keep the chunk-merger effective.
+- **Cheap channels preferred.** Opacity and clip changes are cheap; layout, text, and structure churn re-encode whole regions. The X-ray (`--explain`) attributes each frame to its channel so you can see which term you are paying for.
+- **Format choice is a size lever.** WebP for gradients and glow, dpr 2 when host platforms re-compress anyway, `readme-lean` when bytes dominate. The [size guide](/guides/reduce-file-size) turns each lever into steps.
+
+<Aside type="note">
+  The benchmarks live in the repository (`docs/BENCHMARKS.md`) with the frozen baseline in `bench/baseline/` — a verbatim copy of the v0.9.1 tree — so every number above is reproducible from the source.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Reduce File Size" href="/guides/reduce-file-size" description="Applying the doctrine to your banners." />
+
+<LinkCard title="Parallel Capture" href="/guides/parallel-capture" description="The worker-pool gate and when it wins." />

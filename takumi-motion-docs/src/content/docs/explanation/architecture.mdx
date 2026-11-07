@@ -1,0 +1,76 @@
+---
+title: Architecture
+description: How authoring, capture, compilation, and the Rust rasterizer connect — from React tree to encoded bytes.
+type: explanation
+---
+
+import { Aside, LinkCard, FileTree } from '@astrojs/starlight/components';
+
+Takumi Motion is a bridge between two worlds: high-level React (or raw HTML) authoring, and a Rust rasterizer that renders CSS-style layouts natively. The bridge is deliberately narrow — a JSON timeline, a static markup tree per frame, and integer milliseconds.
+
+## The pipeline
+
+```text
+AUTHOR    React components or templates produce a node tree + TimelineJSON
+PLAN      Scene windows, transitions, and frame grids resolve up front
+CAPTURE   Each frame renders to static markup (pure function of frame index)
+COMPILE   The timeline bakes onto a shared fps grid (CSS keyframes)
+RASTER    The Rust engine (takumi) renders markup + styles to pixels
+ENCODE    GIF / WebP / APNG encoders emit files; post-processing runs
+```
+
+Four properties hold everywhere:
+
+- **Determinism** — `Math.random` is frame-seeded, engine time is integer ms, and no network or clock reads happen during render. Same input, same bytes.
+- **Ahead-of-time timelines** — nothing animates "live". The engine samples authored tracks at frame indices and merges byte-identical frames into chunks.
+- **Rust rasterization** — the takumi engine (via `@takumi-rs/core`, a prebuilt native module) lays out and paints each frame; no headless browser exists in the pipeline.
+- **The report is the API** — every render returns its files, budgets, lint findings, seam verdict, and timings as data.
+
+## Capture lifecycle in detail
+
+```text
+PROBE    <Banner> registers meta + scene inputs (children do not render yet)
+PLAN     planBanner() computes frame-exact scene windows
+PREWARM  each scene's opening frame renders once (FitText/Morph discovery;
+         outputs are discarded — components may see one extra render per scene)
+FRAMES   the real per-frame loop produces the markup that gets encoded
+CHUNK    byte-identical adjacent frames merge
+LINT     style trees + markup + registry findings assemble report.lint
+```
+
+The prewarm pass is why `<FitText>` and `<Morph>` can measure through the real renderer and still render synchronously in the frame loop. Prewarm outputs never reach the encoder.
+
+## Source surface map
+
+<FileTree>
+- src/content/docs (site pages)
+- takumi-motion (the package)
+  - index.ts — root export: engine + renderers + audit + kit
+  - react/ — primitives, hooks, capture runtime, parallel workers
+  - templates/ — the four banner recipes
+  - cli.ts — the terminal surface
+</FileTree>
+
+The package's public surface splits by intent:
+
+| Concern | Where it lives |
+| --- | --- |
+| Authoring in React | `takumi-motion/react` |
+| Authoring without React | `createTimeline` + `h` (root) or `takumi-motion/recipes` |
+| Rendering | `renderBanner`, `renderReactBanner`, `renderHtmlAnimation`, `renderStill`, sprite/sequence exporters |
+| Verification | `renderWithAudit`, `checkBanner`, `auditExtents`, lint channel, `explainCapture` |
+| Terminal | the `takumi-motion` binary |
+
+## Why not a browser?
+
+A headless browser brings nondeterminism (font hinting, timers, layout races), heavy startup cost, and a byte-output floor. The Rust engine renders the same CSS subset natively and fast — the v1.0 benchmarks record an 80-frame banner end-to-end in ~37 ms, serial. The trade is a bounded style property set (`SUPPORTED_STYLE_PROPS`), which the type system and the `TM_UNKNOWN_STYLE_PROP` lint make explicit.
+
+<Aside type="note">
+  This docs site is itself a separate codebase (Astro Starlight). The repository you clone contains the engine; the site ships in its own archive with its own build.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Determinism" href="/explanation/determinism" description="The frame model that makes byte-exact output possible." />
+
+<LinkCard title="Performance & Size" href="/explanation/performance-and-size" description="What the Velocity pass changed and why it matters." />

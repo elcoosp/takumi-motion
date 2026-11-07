@@ -1,0 +1,88 @@
+---
+title: CI Quality Gates
+description: Fail builds on layout shifts, seam breaks, and byte budgets with takumi-motion check and renderWithAudit.
+type: how-to
+---
+
+import { Aside, LinkCard, Steps } from '@astrojs/starlight/components';
+
+Use this guide to make broken banners unshippable. Two tools cover the gates: the `check` CLI command for fast, local-style verification, and `renderWithAudit` for a full determinism-probing audit as data.
+
+## Exit codes you can gate on
+
+| Tool | Exit | Meaning |
+| --- | --- | --- |
+| `takumi-motion check` | `0` | Extents, seam, and sizes pass — "OK — ship it" |
+| `takumi-motion check` | `1` | A non-decorative extent violation, a seam that differs on a declared loop, or a size over budget — "FAILED — do not ship" |
+| `takumi-motion render --budget N` | `2` | Output exceeded the byte budget after the fps ladder ran |
+| `renderWithAudit()` | `0` / `1` / `2` | Pass / content failure (extent hard-fail) / over budget |
+
+The `check` command renders the banner once and audits it. With `--out` it also writes the preset's formats and checks their sizes; without it, the audit runs render-free of file output.
+
+## Add a GitHub Actions gate
+
+```yaml
+name: banner-quality
+on: [pull_request]
+
+jobs:
+  banners:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check banners
+        run: |
+          pnpm exec takumi-motion check src/banners/readme.tsx
+          pnpm exec takumi-motion check src/banners/og.tsx --budget 3000000
+      - name: Render artifact on failure for review
+        if: failure()
+        run: pnpm exec takumi-motion render src/banners/readme.tsx --out ./out
+```
+
+The failed run leaves the rendered files in `./out` for upload as an artifact, so reviewers see exactly what tripped the gate.
+
+## What `check` audits
+
+- **Extents** — the measured element tree is re-walked with fine-grid transform sampling; any box that leaves the canvas safe zone fails when it is not decorative (glow and ambient layers warn instead).
+- **Loop seam** — a declared `loop` must report a matching seam; strict-mode seam energy above 0.02 fails the declarative path.
+- **Sizes** — with `--out`, each written file's byte count is compared against its budget.
+
+## Audit as data: `renderWithAudit`
+
+Embed the same guarantees in your own pipeline. `renderWithAudit` renders, audits, and returns everything as JSON:
+
+```ts
+import { renderWithAudit } from "takumi-motion/audit";
+
+const { report, audit, exitCode, formatted } = await renderWithAudit({
+  banner: MyBanner,
+  preset: "readme",
+  budgetBytes: 2 * 1024 * 1024,
+  outDir: "./out",
+});
+
+if (exitCode !== 0) {
+  console.error(formatted);
+  process.exit(exitCode);
+}
+```
+
+The `audit` object contains `budget` (per-file verdicts), `extents` (violations with frame, target, edge, overflow), `seam`, `warnings`, and a `determinism` block — a full second render with a byte comparison of the first poster. Treat `audit.deterministic === false` as a hard alarm: it means the pipeline lost purity somewhere (a `Math.random` outside the shim, a clock read, a network fetch).
+
+<Aside type="tip">
+  `renderWithAudit` lives behind the `takumi-motion/audit` subpath export — a deliberate embeddability contract for platforms that render user banners.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Reduce File Size" href="/guides/reduce-file-size" description="When the budget gate fails, this is the playbook." />
+
+<LinkCard title="Seamless Loops" href="/guides/seamless-loops" description="Fix the seam failures your gate is catching." />
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="Every field of the audit and render reports." />

@@ -1,0 +1,73 @@
+---
+title: Reduce File Size
+description: Cut GIF and WebP bytes with the budget ladder, hold collapse, the X-ray, and the size doctrine.
+type: how-to
+---
+
+import { Aside, LinkCard, Steps } from '@astrojs/starlight/components';
+
+Encoded size is per-frame delta × frames. Everything in this guide attacks one of those two terms. Start from the report — it tells you which term dominates.
+
+## 1. Set a budget and let the fps ladder work
+
+The CLI accepts a byte budget and negotiates frame rate for you:
+
+```sh
+npx takumi-motion render banner.tsx --budget 800000 --out ./out
+```
+
+When the first render exceeds the budget, the ladder re-renders at 75%, then 50% of the fps (floor 6 fps, first preset format) and keeps the first attempt that fits. The CLI exits `2` when even the ladder fails — wire that into CI as described in [Quality Gates](/guides/ci-quality-gates). Programmatically the same ladder is `optimizeBudget` from the root export.
+
+## 2. Read the X-ray before guessing
+
+`--explain` (or `explain: true` on `renderReactBanner`) attaches per-frame attribution to `report.explain`: every frame is classified as a start, hold, or change, and each change is attributed to a channel — opacity, transform, clip, layout, paint, text, or structure:
+
+```sh
+npx takumi-motion render banner.tsx --explain --json | jq .explain.summary
+```
+
+```json
+{
+  "totalFrames": 180,
+  "uniqueFrames": 96,
+  "holds": 84,
+  "cheapFrames": 52,
+  "churnFrames": 44,
+  "churnRanges": [{ "from": 60, "to": 104 }]
+}
+```
+
+Cheap frames (opacity, clip) compress well. Churn frames (layout, text, structure) re-encode whole regions — a churn range in the middle of a static scene is your first target.
+
+## 3. Apply the doctrine fixes
+
+- **Prefer WebP for glow and color sweeps.** Palette dithering of soft gradients is the leading GIF size trap — 1× glow GIFs compressed worse than 2× in the project benchmarks. The `TM_GLOW_GIF_DITHER` lint fires on `filter: blur()` at dpr 1 into GIF.
+- **Let holds collapse.** Settled animation descriptors emit no style overrides, so identical frames merge into zero-delta holds — the GIF pass rewrites them as longer frame delays (`collapseGifHolds` is on by default; the report's `collapse` block shows frames and bytes saved).
+- **Stop perpetual churn.** Confetti without `burstFrames`, unbounded particle fields, and never-settling springs trip `TM_PARTICLE_CHURN` and `TM_TRANSITION_UNSETTLED`. Finite bursts are the doctrine: a GIF that never stops moving never compresses.
+- **Fix unintended layout shifts.** `TM_LAYOUT_SHIFT` names the culprit sibling and the delta — counting digits need `tabular-nums` or `minWidth`, late siblings need reserved space.
+- **Use `--still` for static surfaces.** When the destination is a single frame (link previews, avatars), `renderStill` emits one PNG instead of an animation.
+
+## 4. Pick the leanest surface that works
+
+| Preset | Size | fps | Formats | Budget |
+| --- | --- | --- | --- | --- |
+| `readme-lean` | 850×200 | 12 | gif | 1.25 MiB |
+| `readme` | 850×200 | 20 | gif, webp | 2 MiB |
+| `readme-hd` | 850×200 | 20 | webp (dpr 2) | 2 MiB |
+| `readme-profile` | 850×300 | 20 | gif, webp | 2.25 MiB |
+| `readme-wide` | 1280×300 | 20 | gif, webp | 3 MiB |
+| `og-card` | 1200×630 | 20 | gif, webp | 4 MiB |
+
+Drop to `readme-lean` when the host platform re-compresses your asset anyway. For sprite-sheet or frame-sequence workflows, the PNG encoder's min-SAD filter heuristic already cut atlas bytes by 90%+ in the v1.0 pass — see [Performance & Size](/explanation/performance-and-size).
+
+<Aside type="note">
+  High-chroma OKLCH color sweeps on large areas dither into palette noise in GIFs at dpr 1. The perceptual color API is still the right authoring surface — pair it with WebP when the design demands vivid washes.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Performance & Size" href="/explanation/performance-and-size" description="Why the engine is fast and where the bytes went." />
+
+<LinkCard title="Lint Codes" href="/reference/lint-codes" description="Every size-related warning and its fix." />
+
+<LinkCard title="Presets, Themes & Fonts" href="/reference/presets-and-themes" description="Preset dimensions, budgets, and overrides." />

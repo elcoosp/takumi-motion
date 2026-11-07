@@ -1,0 +1,71 @@
+---
+title: Seamless Loops
+description: Make banners repeat forever with byte-identical first and last frames — wrap seams, loop utilities, and the seam audit.
+type: how-to
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+A looping README badge shows its cut point every few seconds unless the last frame equals the first. Takumi Motion guarantees that equality byte-for-byte instead of asking you to eyeball it. Use this guide whenever you set `<Banner loop>`.
+
+## React path: wrap the seam
+
+Declare `loop` on the banner and mark the boundary that closes the circle. Either the first scene enters with `wrap` or the last scene exits with `wrap` — one of the two, never both:
+
+```tsx
+<Banner loop fps={24}>
+  <Scene duration={90}>…</Scene>
+  <Scene duration={76} exit="wrap">…</Scene>
+</Banner>
+```
+
+`exit="wrap"` appends a crossfade tail into scene 1's frozen frame-0 layer; at the final wrap frame the leaving node drops, so the last frame and frame 0 are byte-identical by construction. The report carries the verdict:
+
+```json
+{ "seam": { "mode": "exact", "loop": true } }
+```
+
+<Aside type="caution">
+  A `<Banner loop>` without a wrap earns the `TM_LOOP_SEAM` lint pointing at the fix. A `wrap` transition is honored only on the last scene of a looping banner.
+</Aside>
+
+Looping banners default their poster to frame 0 — the landing frame — instead of the mid-timeline default.
+
+## Declarative path: loop utilities
+
+The root export includes four composable utilities:
+
+| Utility | Purpose |
+| --- | --- |
+| `fadeWrap(timeline, { selector, inMs, outMs, periodMs })` | Owns a target's opacity: fades in, holds, fades out. Sets `timeline.wrap = { selector }` so the seam checker knows the loop is wrapped. Throws when the target already has an opacity track. |
+| `alignLoopPeriod(timeline, capMs?)` | Snaps the duration up to the least common multiple of all infinite tracks' periods so every track lands on its phase at the seam. Throws on phase-shifted infinite tracks or an LCM above the cap. |
+| `checkLoopSeam(timeline, { tolerance? })` | Returns `{ seamless, mode, diffs }`. `wrapped` mode checks wrap opacity at both ends (tolerance default 0.02); `strict` mode demands every numeric track's first value equal its last. |
+| `assertAmbientPeriod(durationMs, periodMs, label)` | Verifies a mirror-cycle ambient track (2× iteration) divides the loop period exactly. |
+
+A complete declarative loop:
+
+```ts
+import { createTimeline, alignLoopPeriod, fadeWrap, renderBanner } from "takumi-motion";
+
+const timeline = createTimeline({ fps: 20 })
+  .add(node, { y: [0, -12, 0] }, { duration: 1200, repeat: Infinity, repeatType: "mirror" });
+
+const aligned = alignLoopPeriod(timeline);
+const wrapped = fadeWrap(aligned, { selector: "#badge", inMs: 350, outMs: 350 });
+
+const report = await renderBanner({ node, timeline: wrapped, outDir: "./out" });
+```
+
+## Verify before shipping
+
+- **React path** — read `report.seam.mode`; the golden composition test proves `mode: "exact"` after a byte check.
+- **Declarative path** — call `checkLoopSeam(wrapped)` and assert `seamless === true`.
+- **CLI** — `takumi-motion check banner.tsx` fails (exit 1) when a declared loop reports `seam.mode === "differs"`. Wire it into CI with [Quality Gates](/guides/ci-quality-gates).
+
+## Next steps
+
+<LinkCard title="CI Quality Gates" href="/guides/ci-quality-gates" description="Turn seam and extent audits into a merge-blocking check." />
+
+<LinkCard title="Data-Driven Animations" href="/guides/data-driven-animations" description="Charts and count-ups that survive looping." />
+
+<LinkCard title="Lint Codes" href="/reference/lint-codes" description="TM_LOOP_SEAM and every other coded warning." />

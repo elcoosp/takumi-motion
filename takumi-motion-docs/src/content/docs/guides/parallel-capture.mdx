@@ -1,0 +1,70 @@
+---
+title: Parallel Capture
+description: Speed up heavy banners with worker-pool capture — byte-identical output at any worker count.
+type: how-to
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Frame capture is embarrassingly parallel — each frame is a pure function of `(frame, props)` — so heavy banners render across worker threads. Use this guide when capture dominates your render time (large canvases, hundreds of frames, deep trees).
+
+## Switch to module mode
+
+Parallel capture requires the banner to be addressable as a module, because each worker imports it independently. Pass `bannerModule` instead of `banner`:
+
+```ts
+import { renderReactBanner } from "takumi-motion";
+
+const report = await renderReactBanner({
+  bannerModule: "./launch-banner.tsx", // the file's default export
+  workers: "auto",
+  formats: ["webp"],
+  outDir: "./out",
+});
+```
+
+The module path's default export can be a React element, a `defineBanner` component, or a function returning either. The CLI equivalent is `--workers auto` (module banners only).
+
+## Let the auto gate decide
+
+`workers: "auto"` refuses to spawn unless the host actually benefits:
+
+| Condition | Threshold |
+| --- | --- |
+| Available cores | ≥ 4 |
+| Banner length | ≥ 128 frames |
+| Measured capture work | ≥ 400 ms (probe-timed) |
+
+The main thread probes once — two static renders establish the plan and per-frame cost — and only then spawns up to 16 workers over a window grid. On smaller hosts the Rust stages already saturate the machine, and spawning JS workers oversubscribes it; the bench table in the repository records a real case where `workers: 4` on a 2-core host measured 0.88× (slower). The gate keeps serial there.
+
+A numeric `workers: 4` forces the pool (capped at 16 and at the frame count) when you know better than the gate.
+
+<Aside type="tip">
+  Byte-identity holds at **any** worker count — windows are concatenated and re-chunked once, plan agreement is asserted before merge, and the frame-seeded PRNG shim makes each frame's render a pure function of `(frame, props)`. Golden tests in the repository assert this invariant; you can assert it too by diffing serial and parallel outputs.
+</Aside>
+
+## Render frame windows
+
+Debug a range without re-rendering everything:
+
+```ts
+const report = await renderReactBanner({
+  bannerModule: "./reel.tsx",
+  fromFrame: 120,
+  toFrame: 180,
+});
+```
+
+The CLI pair is `--from 120 --to 180`. The report's `window` block records the range that ran.
+
+## Estimate before you commit
+
+The report's `timings` block splits capture, parse, audit, and encode. If `captureMs` is small next to `encodeMs`, more workers will not help — move to [Reduce File Size](/guides/reduce-file-size) instead.
+
+## Next steps
+
+<LinkCard title="Determinism" href="/explanation/determinism" description="How the frame-seeded shim keeps workers byte-exact." />
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="renderReactBanner options and the timings block." />
+
+<LinkCard title="CLI" href="/reference/cli" description="--workers, --from/--to, and --concurrency flags." />

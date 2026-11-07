@@ -1,0 +1,81 @@
+---
+title: Preview and Inspect
+description: Choose between filmstrips, CSS previews, storyboards, and stills to verify banners before shipping.
+type: how-to
+---
+
+import { Aside, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Four inspection tools ship with the engine. They answer different questions — picking the right one saves render cycles.
+
+## The tools at a glance
+
+| Tool | What you get | Source of truth | Best for |
+| --- | --- | --- | --- |
+| `--filmstrip` | N engine-exact stills in one self-contained HTML | The actual shipped pixels | Review diffs — output is byte-deterministic |
+| `preview` | A playable HTML of the captured CSS | Approximate layout | Scrubbing motion timing |
+| `storyboard` | A labeled PNG contact sheet of the timeline | Engine-rasterized cells | Whole-timeline visual QA |
+| `renderStill` | One PNG frame | Engine-exact | Link previews, avatars, golden frames |
+
+## Engine-exact filmstrip
+
+Every cell is rendered by the Rust engine — what you review is what you ship:
+
+<Tabs>
+  <TabItem label="6 evenly spaced frames">
+    ```sh
+    npx takumi-motion render banner.tsx --filmstrip
+    ```
+  </TabItem>
+  <TabItem label="Explicit frames">
+    ```sh
+    npx takumi-motion render banner.tsx --filmstrip 0,15,30
+    ```
+  </TabItem>
+  <TabItem label="10 frames">
+    ```sh
+    npx takumi-motion render banner.tsx --filmstrip 10
+    ```
+  </TabItem>
+</Tabs>
+
+The filmstrip is self-contained HTML and byte-deterministic, so it diffs cleanly in pull requests. Programmatic form: `renderFilmstrip` (root export) — accepts react banners, HTML sources, and declarative node+timeline alike.
+
+## CSS preview player
+
+```sh
+npx takumi-motion preview banner.tsx -o banner-preview.html
+```
+
+The player replays the captured CSS in a browser — good for feeling the motion, approximate for layout. The encoded GIF/WebP remains the source of truth; when they disagree, trust the encoded output.
+
+## Storyboard contact sheet
+
+The storyboard renders a labeled PNG grid of the whole timeline (cells rasterized by the engine — the sheet itself is a takumi document) plus a sidecar JSON with the sampled frame indices:
+
+```sh
+npx takumi-motion storyboard reel.tsx --frames 12 --columns 4 --out ./qa
+```
+
+Use it to review scene order, transitions, and seam behavior at a glance. Programmatic form: `renderStoryboard` with `{ banner, frames, columns, scale }`.
+
+## Single stills
+
+```sh
+npx takumi-motion render banner.tsx --still        # settled frame (~60% of the timeline)
+npx takumi-motion render banner.tsx --still 0      # explicit frame
+```
+
+Looping banners poster and still default to frame 0 — the landing frame. `renderStill` returns `{ png, bytes, path }` and supports all three source paths.
+
+<Aside type="tip">
+  Pair the filmstrip with `--explain`: the filmstrip shows which frames exist, the X-ray shows why each one exists. Together they localize size waste in one pass.
+</Aside>
+
+## Next steps
+
+<LinkCard title="Reduce File Size" href="/guides/reduce-file-size" description="Turn X-ray attribution into byte savings." />
+
+<LinkCard title="Renderers & Reports" href="/reference/renderers" description="Filmstrip, storyboard, and still options in full." />
+
+<LinkCard title="CLI" href="/reference/cli" description="Every flag mentioned here, with defaults." />

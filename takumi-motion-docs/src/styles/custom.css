@@ -1,0 +1,43 @@
+/*
+  Takumi Motion brand theme — derived from the project's real logo
+  (docs/logo.png in the repository): a faceted orange/black emblem on an
+  orange gradient field. Sampled dominant hue: 13° (burnt orange,
+  average #D94922, vivid facet #DF4D24, dark facets #171518).
+
+  Light mode accent-high (#A8381A) on white: 6.47:1 contrast (WCAG AA ✓).
+  Dark mode accent-high (#FF977A) on near-black (#1B1C22): 8.06:1 (WCAG AA ✓).
+  See docs/decisions/0004-brand-and-logo.md for the derivation.
+*/
+
+:root {
+  --sl-color-accent-low: hsl(13, 100%, 96%);
+  --sl-color-accent: hsl(13, 92%, 47%);
+  --sl-color-accent-high: hsl(13, 73%, 38%);
+  /* Belt-and-braces for any component still reading the numbered ramp */
+  --sl-color-accent-600: hsl(13, 73%, 38%);
+  --sl-color-accent-500: hsl(13, 92%, 47%);
+  --sl-color-accent-400: hsl(13, 92%, 55%);
+}
+
+[data-theme='dark'] {
+  --sl-color-accent-low: hsl(13, 55%, 16%);
+  --sl-color-accent: hsl(13, 96%, 60%);
+  --sl-color-accent-high: hsl(13, 100%, 74%);
+  --sl-color-accent-600: hsl(13, 96%, 60%);
+  --sl-color-accent-500: hsl(13, 96%, 60%);
+  --sl-color-accent-400: hsl(13, 100%, 74%);
+}
+
+/* Keep the site title anchored to the same brand hue in both themes */
+.site-title {
+  font-weight: 650;
+}
+
+/* Links inside the splash hero tagline receive no Starlight styling —
+   without this they fall back to the user-agent default blue. */
+.tagline a,
+.hero .tagline a {
+  color: var(--sl-color-accent-high);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

@@ -1,0 +1,4 @@
+minimumReleaseAgeExclude:
+  - '@astrojs/starlight@0.42.10'
+overrides:
+  "@emnapi/runtime": 1.11.1

@@ -4,7 +4,7 @@ description: Make banners repeat forever with byte-identical first and last fram
 type: how-to
 ---
 
-import { Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 A looping README badge shows its cut point every few seconds unless the last frame equals the first. Takumi Motion guarantees that equality byte-for-byte instead of asking you to eyeball it. Use this guide whenever you set `<Banner loop>`.
 
@@ -12,18 +12,14 @@ A looping README badge shows its cut point every few seconds unless the last fra
 
 Declare `loop` on the banner and mark the boundary that closes the circle. Either the first scene enters with `wrap` or the last scene exits with `wrap` — one of the two, never both:
 
-```tsx
-<Banner loop fps={24}>
-  <Scene duration={90}>…</Scene>
-  <Scene duration={76} exit="wrap">…</Scene>
-</Banner>
-```
+<Code lang="tsx" code={`<Banner loop fps={24}>
+    <Scene duration={90}>…</Scene>
+    <Scene duration={76} exit="wrap">…</Scene>
+</Banner>`} />
 
 `exit="wrap"` appends a crossfade tail into scene 1's frozen frame-0 layer; at the final wrap frame the leaving node drops, so the last frame and frame 0 are byte-identical by construction. The report carries the verdict:
 
-```json
-{ "seam": { "mode": "exact", "loop": true } }
-```
+<Code lang="json" code={`{ "seam": { "mode": "exact", "loop": true } }`} />
 
 <Aside type="caution">
   A `<Banner loop>` without a wrap earns the `TM_LOOP_SEAM` lint pointing at the fix. A `wrap` transition is honored only on the last scene of a looping banner.
@@ -44,17 +40,15 @@ The root export includes four composable utilities:
 
 A complete declarative loop:
 
-```ts
-import { createTimeline, alignLoopPeriod, fadeWrap, renderBanner } from "takumi-motion";
+<Code lang="ts" code={`import { createTimeline, alignLoopPeriod, fadeWrap, renderBanner } from "takumi-motion";
 
 const timeline = createTimeline({ fps: 20 })
-  .add(node, { y: [0, -12, 0] }, { duration: 1200, repeat: Infinity, repeatType: "mirror" });
+    .add(node, { y: [0, -12, 0] }, { duration: 1200, repeat: Infinity, repeatType: "mirror" });
 
 const aligned = alignLoopPeriod(timeline);
 const wrapped = fadeWrap(aligned, { selector: "#badge", inMs: 350, outMs: 350 });
 
-const report = await renderBanner({ node, timeline: wrapped, outDir: "./out" });
-```
+const report = await renderBanner({ node, timeline: wrapped, outDir: "./out" });`} />
 
 ## Verify before shipping
 

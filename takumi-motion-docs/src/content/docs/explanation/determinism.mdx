@@ -4,7 +4,7 @@ description: The frame model, seeded randomness, integer engine time, and the by
 type: explanation
 ---
 
-import { Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 "Deterministic" is the product. This page explains the mechanisms that make every render byte-reproducible — and the rules your code must follow to keep them intact.
 
@@ -32,15 +32,13 @@ The compile step bakes every track onto a shared fps grid plus structural bounda
 
 `renderWithAudit` renders twice and byte-compares the first poster:
 
-```json
-{
-  "determinism": {
-    "deterministic": true,
-    "checkedBytes": 18432,
-    "detail": "poster @ 1500ms byte-identical across renders"
-  }
-}
-```
+<Code lang="json" code={`{
+    "determinism": {
+  "deterministic": true,
+  "checkedBytes": 18432,
+  "detail": "poster @ 1500ms byte-identical across renders"
+    }
+}`} />
 
 `deterministic: false` is a hard alarm — it means an input varied between renders. The usual culprits, in order of likelihood:
 

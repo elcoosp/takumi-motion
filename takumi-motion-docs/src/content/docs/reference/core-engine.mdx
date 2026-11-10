@@ -4,7 +4,7 @@ description: createTimeline, compileTimeline, evaluateAt, springs, inertia, easi
 type: reference
 ---
 
-import { Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 The root export (`takumi-motion`) exposes the authoring and evaluation core. React is an optional peer — everything on this page runs without it.
 
@@ -12,11 +12,9 @@ The root export (`takumi-motion`) exposes the authoring and evaluation core. Rea
 
 ### `createTimeline(options?)` → `Timeline`
 
-```ts
-const timeline = createTimeline({ fps: 20, defaultTransition })
-  .add(target, keyframes, options)
-  .label("intro");
-```
+<Code lang="ts" code={`const timeline = createTimeline({ fps: 20, defaultTransition })
+    .add(target, keyframes, options)
+    .label("intro");`} />
 
 `add(target, keyframes, options?)` accepts partial records of `AnimatableProperty` → keyframes and returns `TimelineTarget` handles. Options:
 
@@ -32,14 +30,12 @@ Default transitions mirror Motion: more than 2 keyframes → tween 800 ms; trans
 
 `Timeline.toJSON()` produces the interchange format every renderer accepts:
 
-```ts
-interface TimelineJSON {
-  version: 1;
-  durationMs: number;
-  tracks: TrackJSON[];
-  wrap?: { selector: string };
-}
-```
+<Code lang="ts" code={`interface TimelineJSON {
+    version: 1;
+    durationMs: number;
+    tracks: TrackJSON[];
+    wrap?: { selector: string };
+}`} />
 
 ### Transforms
 

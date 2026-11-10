@@ -4,7 +4,7 @@ description: Inject static data at setup and render deterministic charts, count-
 type: how-to
 ---
 
-import { Aside, Steps, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard, Steps } from '@astrojs/starlight/components';
 
 Use this guide when a banner needs to visualize numbers — stars, revenue, latency, coverage. The data channel injects one JSON object at setup; nothing is fetched while frames render, which is what keeps the output byte-reproducible.
 
@@ -12,27 +12,21 @@ Use this guide when a banner needs to visualize numbers — stars, revenue, late
 
 A network fetch inside a render function is a determinism violation. File reads are fine — they are immutable inputs. Pass data programmatically or through the CLI:
 
-```ts
-const report = await renderReactBanner({
-  banner: MetricsReel,
-  data: metricsJson,
-});
-```
+<Code lang="ts" code={`const report = await renderReactBanner({
+    banner: MetricsReel,
+    data: metricsJson,
+});`} />
 
-```sh
-npx takumi-motion render metrics-reel.tsx --data metrics.json --format webp
-```
+<Code lang="sh" code={`npx takumi-motion render metrics-reel.tsx --data metrics.json --format webp`} />
 
 Inside the component tree, read the object anywhere with `useChartData`:
 
-```tsx
-import { useChartData } from "takumi-motion/react";
+<Code lang="tsx" code={`import { useChartData } from "takumi-motion/react";
 
 function Headline() {
-  const data = useChartData<{ stars: number }>();
-  return <span>{data.stars.toLocaleString("en-US")} stars</span>;
-}
-```
+    const data = useChartData<{ stars: number }>();
+    return <span>{data.stars.toLocaleString("en-US")} stars</span>;
+}`} />
 
 `useChartData(hint?)` throws with a hint listing registered keys when no channel exists; call `hasChartData()` when you need a quiet check.
 
@@ -40,15 +34,13 @@ function Headline() {
 
 `<LineChart>` builds one static SVG, then sweeps a per-frame `clip-path: inset()` across it — that clip reveal is the draw engine:
 
-```tsx
-<LineChart
-  data={{ series: [{ name: "rps", color: "#7aa2f7", points: [12, 30, 28, 55, 61, 80] }], labels: ["Jan", "Feb", "Mar"] }}
-  draw="reveal"
-  area
-  grid
-  showPoints
-/>
-```
+<Code lang="tsx" code={`<LineChart
+    data={{ series: [{ name: "rps", color: "#7aa2f7", points: [12, 30, 28, 55, 61, 80] }], labels: ["Jan", "Feb", "Mar"] }}
+    draw="reveal"
+    area
+    grid
+    showPoints
+/>`} />
 
 Key props: `draw="none"` renders the finished chart (use it for stills), `drawDurationFrames`/`drawDelayFrames` control the sweep, and `yTicks` sets gridline density. Data can arrive via props or the channel — omit the `data` prop and the chart reads `useChartData` itself.
 
@@ -56,18 +48,16 @@ Key props: `draw="none"` renders the finished chart (use it for stills), `drawDu
 
 `<BarChart>` grows bars with staggered closed-form springs; `<Donut>` sweeps a value arc:
 
-```tsx
-<BarChart
-  data={{ series: [{ name: "downloads", color: "#DF4D24", points: [820, 1240, 980, 1610] }] }}
-  orientation="up"
-  stagger
-  showValues
+<Code lang="tsx" code={`<BarChart
+    data={{ series: [{ name: "downloads", color: "#DF4D24", points: [820, 1240, 980, 1610] }] }}
+    orientation="up"
+    stagger
+    showValues
 />
 
 <Donut value={0.83} size={140} color="#7aa2f7">
-  <span style={{ fontSize: 24 }}>83%</span>
-</Donut>
-```
+    <span style={{ fontSize: 24 }}>83%</span>
+</Donut>`} />
 
 `<Donut>` validates `value` in the `[0, 1]` range. The default `paint="transform"` sweep is palette-safe for GIF; `paint="conic"` is the gradient alternative but trips the GIF dither lint on 1× surfaces.
 
@@ -75,11 +65,9 @@ Key props: `draw="none"` renders the finished chart (use it for stills), `drawDu
 
 `<CountUp>` accepts a `format` pattern — parsed once, rendered with `tabular-nums` forced on, so digit columns never reflow siblings:
 
-```tsx
-<CountUp to={4200} durationFrames={40} delayFrames={6} format="$,.0f" />
+<Code lang="tsx" code={`<CountUp to={4200} durationFrames={40} delayFrames={6} format="$,.0f" />
 <CountUp to={0.962} format=",.1f%" />
-<CountUp to={37} format="ms" />
-```
+<CountUp to={37} format="ms" />`} />
 
 Pattern grammar: `[prefix][, grouping][.Nf decimals][suffix]`. Function formers still work: `format={(v) => \`${Math.round(v).toLocaleString("en-US")}+ stars\`}`.
 

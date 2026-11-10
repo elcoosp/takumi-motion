@@ -15,10 +15,10 @@ hero:
       icon: external
   image:
     alt: Takumi Motion logo
-    file: ../../assets/logo-light.svg
+    file: ../../assets/logo.png
 ---
 
-import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
+import { Aside, Card, CardGrid, LinkButton, LinkCard } from '@astrojs/starlight/components';
 
 Takumi Motion compiles animation timelines ahead of time, captures frames deterministically, and delegates rasterization to a Rust backend. No headless browser, no layout thrashing, no nondeterministic replays — the same input produces the same bytes, every time.
 
@@ -38,6 +38,8 @@ Takumi Motion compiles animation timelines ahead of time, captures frames determ
     Use the X-ray, budget ladder, and size doctrine to cut GIF/WebP bytes by an order of magnitude.
   </Card>
 </CardGrid>
+
+<LinkButton href="/tutorials/declarative-banners/" icon="right-arrow">Start the tutorial</LinkButton>
 
 ## Why Takumi Motion
 

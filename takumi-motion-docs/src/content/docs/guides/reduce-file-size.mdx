@@ -4,7 +4,7 @@ description: Cut GIF and WebP bytes with the budget ladder, hold collapse, the X
 type: how-to
 ---
 
-import { Aside, LinkCard, Steps } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard, Steps } from '@astrojs/starlight/components';
 
 Encoded size is per-frame delta × frames. Everything in this guide attacks one of those two terms. Start from the report — it tells you which term dominates.
 
@@ -12,9 +12,7 @@ Encoded size is per-frame delta × frames. Everything in this guide attacks one 
 
 The CLI accepts a byte budget and negotiates frame rate for you:
 
-```sh
-npx takumi-motion render banner.tsx --budget 800000 --out ./out
-```
+<Code lang="sh" code={`npx takumi-motion render banner.tsx --budget 800000 --out ./out`} />
 
 When the first render exceeds the budget, the ladder re-renders at 75%, then 50% of the fps (floor 6 fps, first preset format) and keeps the first attempt that fits. The CLI exits `2` when even the ladder fails — wire that into CI as described in [Quality Gates](/guides/ci-quality-gates). Programmatically the same ladder is `optimizeBudget` from the root export.
 
@@ -22,20 +20,16 @@ When the first render exceeds the budget, the ladder re-renders at 75%, then 50%
 
 `--explain` (or `explain: true` on `renderReactBanner`) attaches per-frame attribution to `report.explain`: every frame is classified as a start, hold, or change, and each change is attributed to a channel — opacity, transform, clip, layout, paint, text, or structure:
 
-```sh
-npx takumi-motion render banner.tsx --explain --json | jq .explain.summary
-```
+<Code lang="sh" code={`npx takumi-motion render banner.tsx --explain --json | jq .explain.summary`} />
 
-```json
-{
+<Code lang="json" code={`{
   "totalFrames": 180,
   "uniqueFrames": 96,
   "holds": 84,
   "cheapFrames": 52,
   "churnFrames": 44,
   "churnRanges": [{ "from": 60, "to": 104 }]
-}
-```
+}`} />
 
 Cheap frames (opacity, clip) compress well. Churn frames (layout, text, structure) re-encode whole regions — a churn range in the middle of a static scene is your first target.
 

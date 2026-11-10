@@ -4,7 +4,7 @@ description: Install takumi-motion, define a React banner, and render it to a de
 type: tutorial
 ---
 
-import { Steps, Tabs, TabItem, Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard, Steps, TabItem, Tabs } from '@astrojs/starlight/components';
 
 In this tutorial you build and render a React banner — the golden path for producing an animated README badge or OG card. You install the package, define scenes, render server-side to WebP, and read the render report. The whole walkthrough takes about fifteen minutes.
 
@@ -18,28 +18,20 @@ In this tutorial you build and render a React banner — the golden path for pro
 
 Create an empty directory and initialize a package:
 
-```sh
-mkdir my-banner && cd my-banner
-pnpm init
-```
+<Code lang="sh" code={`mkdir my-banner && cd my-banner
+pnpm init`} />
 
 Install `takumi-motion`:
 
 <Tabs>
   <TabItem label="pnpm">
-    ```sh
-    pnpm add takumi-motion
-    ```
+<Code lang="sh" code={` pnpm add takumi-motion`} />
   </TabItem>
   <TabItem label="npm">
-    ```sh
-    npm add takumi-motion
-    ```
+<Code lang="sh" code={` npm add takumi-motion`} />
   </TabItem>
   <TabItem label="yarn">
-    ```sh
-    yarn add takumi-motion
-    ```
+<Code lang="sh" code={` yarn add takumi-motion`} />
   </TabItem>
 </Tabs>
 
@@ -53,42 +45,40 @@ A banner is a React component wrapped in `defineBanner`. Inside it, a `<Banner>`
 
 Create a file named `launch-banner.tsx`:
 
-```tsx
-import { defineBanner, Banner, Scene, Layer } from "takumi-motion/react";
+<Code lang="tsx" code={`import { defineBanner, Banner, Scene, Layer } from "takumi-motion/react";
 import { renderReactBanner } from "takumi-motion";
 
 export const launchBanner = defineBanner(function TakumiMotionLaunch() {
-  return (
+        return (
     <Banner preset="readme" theme="tokyo-night" transitionMs={250}>
-      <Layer bottom>
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            width: 850,
-            height: 3,
-            backgroundColor: "#7aa2f7",
-          }}
-        />
-      </Layer>
+            <Layer bottom>
+                    <div
+                            style={{
+                                    position: "absolute",
+                                    bottom: 0,
+                                    width: 850,
+                                    height: 3,
+                                    backgroundColor: "#7aa2f7",
+                            }}
+                    />
+            </Layer>
 
-      <Scene duration={100} enter="rise" exit="crossfade">
-        <h1 style={{ fontSize: 48, fontWeight: 700, color: "#c0caf5" }}>
-          takumi-motion
-        </h1>
-      </Scene>
+            <Scene duration={100} enter="rise" exit="crossfade">
+                    <h1 style={{ fontSize: 48, fontWeight: 700, color: "#c0caf5" }}>
+                            takumi-motion
+                    </h1>
+            </Scene>
     </Banner>
-  );
+        );
 });
 
 const report = await renderReactBanner({
-  banner: launchBanner,
-  formats: ["webp"],
-  outDir: "./out",
+        banner: launchBanner,
+        formats: ["webp"],
+        outDir: "./out",
 });
 
-console.log(report.lint);
-```
+console.log(report.lint);`} />
 
 <Aside type="caution">
   Pass `formats` (an array) and `outDir` (a directory), not `format` or a file path. The renderer picks file names from the preset and base name.
@@ -104,19 +94,15 @@ Three details carry the design:
 
 Run the file with Node:
 
-```sh
-node launch-banner.tsx
-```
+<Code lang="sh" code={`node launch-banner.tsx`} />
 
 The command prints a report and writes `./out/launch-banner.webp`:
 
-```json
-{
+<Code lang="json" code={`{
   "format": "webp",
   "bytes": 184320,
   "withinBudget": true
-}
-```
+}`} />
 
 Open the file in a browser — you see the title rise in, hold, and crossfade out. The same bytes render on every machine and every run.
 
@@ -137,9 +123,7 @@ A non-empty `report.lint` does not fail the render. It tells you what will cost 
 
 The same banner renders from the terminal without writing a driver script:
 
-```sh
-npx takumi-motion render launch-banner.tsx --out ./out
-```
+<Code lang="sh" code={`npx takumi-motion render launch-banner.tsx --out ./out`} />
 
 The CLI accepts `--format gif,webp`, `--budget 800000`, `--filmstrip`, and more — every flag is documented in the [CLI reference](/reference/cli).
 

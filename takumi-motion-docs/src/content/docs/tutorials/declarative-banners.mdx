@@ -4,7 +4,7 @@ description: Compose and render banners from templates and timelines — no Reac
 type: tutorial
 ---
 
-import { Steps, Aside, Tabs, TabItem, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard, Steps, TabItem, Tabs } from '@astrojs/starlight/components';
 
 Not every banner needs a component tree. Takumi Motion ships four deterministic banner recipes — `typewriter`, `countup`, `sweep`, and `cascade` — plus a declarative timeline API. In this tutorial you render a template-based banner from a plain TypeScript file, then emit the full multi-preset asset kit.
 
@@ -17,31 +17,27 @@ Not every banner needs a component tree. Takumi Motion ships four deterministic 
 
 Templates are functions that return a `BannerResult` — an element plus a compiled-ready timeline. Create `release-banner.ts`:
 
-```ts
-import { gradientSweepBanner, renderBanner } from "takumi-motion";
+<Code lang="ts" code={`import { gradientSweepBanner, renderBanner } from "takumi-motion";
 
 const result = await gradientSweepBanner({
-  title: "v2.4 — no more cold starts",
-  subtitle: "cold starts down 96%",
-  theme: "dracula",
+    title: "v2.4 — no more cold starts",
+    subtitle: "cold starts down 96%",
+    theme: "dracula",
 });
 
 const report = await renderBanner({
-  node: result.element,
-  timeline: result.timeline,
-  preset: "readme",
-  outDir: "./out",
-  baseName: "release",
+    node: result.element,
+    timeline: result.timeline,
+    preset: "readme",
+    outDir: "./out",
+    baseName: "release",
 });
 
-console.log(report.totalBytes, report.overBudget);
-```
+console.log(report.totalBytes, report.overBudget);`} />
 
 Run it:
 
-```sh
-node release-banner.ts
-```
+<Code lang="sh" code={`node release-banner.ts`} />
 
 You get `./out/release.gif` and `./out/release.webp` plus a poster PNG. The template bakes a strict loop seam, so the animation repeats without a visible cut.
 
@@ -64,28 +60,22 @@ Each template adds its own props — for example `typewriter` takes `text`, `tag
 
 The `render` command loads a module and renders whatever it exports — a template result, an element-plus-timeline object, or a sync/async function returning either. Create `banner-cli.ts`:
 
-```ts
-import { cascadeBanner } from "takumi-motion/recipes";
+<Code lang="ts" code={`import { cascadeBanner } from "takumi-motion/recipes";
 
 export default await cascadeBanner({
-  title: "takumi-motion",
-  tagline: "deterministic banners from code",
-  accent: "#DF4D24",
-});
-```
+    title: "takumi-motion",
+    tagline: "deterministic banners from code",
+    accent: "#DF4D24",
+});`} />
 
 Then render it from the terminal:
 
 <Tabs>
   <TabItem label="pnpm">
-    ```sh
-    pnpm exec takumi-motion render banner-cli.ts --preset readme-wide --out ./out
-    ```
+<Code lang="sh" code={` pnpm exec takumi-motion render banner-cli.ts --preset readme-wide --out ./out`} />
   </TabItem>
   <TabItem label="npx">
-    ```sh
-    npx takumi-motion render banner-cli.ts --preset readme-wide --out ./out
-    ```
+<Code lang="sh" code={` npx takumi-motion render banner-cli.ts --preset readme-wide --out ./out`} />
   </TabItem>
 </Tabs>
 
@@ -95,18 +85,14 @@ The loader resolves, in order: the module's default export, a `banner` export, t
 
 The `--kit` flag renders a banner across several presets plus a static reduced-motion twin — the complete asset set for a project README:
 
-```sh
-pnpm exec takumi-motion render banner-cli.ts --kit --out ./assets
-```
+<Code lang="sh" code={`pnpm exec takumi-motion render banner-cli.ts --kit --out ./assets`} />
 
 Programmatically, the same call is `renderKit`:
 
-```ts
-import { renderKit } from "takumi-motion";
+<Code lang="ts" code={`import { renderKit } from "takumi-motion";
 
 const kit = await renderKit(bannerResult, { outDir: "./assets" });
-console.log(kit.files); // [{ path, role }, ...]
-```
+console.log(kit.files); // [{ path, role }, ...]`} />
 
 The kit writes `<base>-<preset>.<ext>` files for the `readme`, `readme-hd`, and `readme-lean` presets, plus `banner-static.png`. The CLI exits with code 2 when any variant exceeds its preset's byte budget.
 
@@ -118,23 +104,21 @@ The kit writes `<base>-<preset>.<ext>` files for the `readme`, `readme-hd`, and 
 
 When templates do not fit, build a timeline directly. `createTimeline` mirrors Motion's API — targets, keyframes, transitions — and renderers consume its JSON form. Timeline JSON is the interchange format every render path accepts:
 
-```ts
-import { createTimeline, renderBanner, h } from "takumi-motion";
+<Code lang="ts" code={`import { createTimeline, renderBanner, h } from "takumi-motion";
 
 const node = h("div", { style: { fontSize: 42, fontWeight: 700 } }, "ship it");
 
 const timeline = createTimeline({ fps: 20 }).add(
-  node,
-  { opacity: [0, 1], y: [-24, 0] },
-  { at: 0, duration: 600 },
+    node,
+    { opacity: [0, 1], y: [-24, 0] },
+    { at: 0, duration: 600 },
 );
 
 const report = await renderBanner({
-  node,
-  timeline: timeline.toJSON(),
-  outDir: "./out",
-});
-```
+    node,
+    timeline: timeline.toJSON(),
+    outDir: "./out",
+});`} />
 
 `renderBanner` runs `compileTimeline` internally — bake it yourself only when you need the CSS output for inspection. Timeline transforms (`shiftTimeline`, `concatTimelines`) compose longer sequences declaratively — the data equivalent of stacking scenes.
 

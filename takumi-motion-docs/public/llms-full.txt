@@ -9,7 +9,7 @@ Guided walkthroughs for first-time users.
 ### Declarative Banners
 Source: /tutorials/declarative-banners
 
-import { Steps, Aside, Tabs, TabItem, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard, Steps, TabItem, Tabs } from '@astrojs/starlight/components';
 
 Not every banner needs a component tree. Takumi Motion ships four deterministic banner recipes — `typewriter`, `countup`, `sweep`, and `cascade` — plus a declarative timeline API. In this tutorial you render a template-based banner from a plain TypeScript file, then emit the full multi-preset asset kit.
 
@@ -22,31 +22,27 @@ Not every banner needs a component tree. Takumi Motion ships four deterministic 
 
 Templates are functions that return a `BannerResult` — an element plus a compiled-ready timeline. Create `release-banner.ts`:
 
-```ts
-import { gradientSweepBanner, renderBanner } from "takumi-motion";
+<Code lang="ts" code={`import { gradientSweepBanner, renderBanner } from "takumi-motion";
 
 const result = await gradientSweepBanner({
-  title: "v2.4 — no more cold starts",
-  subtitle: "cold starts down 96%",
-  theme: "dracula",
+    title: "v2.4 — no more cold starts",
+    subtitle: "cold starts down 96%",
+    theme: "dracula",
 });
 
 const report = await renderBanner({
-  node: result.element,
-  timeline: result.timeline,
-  preset: "readme",
-  outDir: "./out",
-  baseName: "release",
+    node: result.element,
+    timeline: result.timeline,
+    preset: "readme",
+    outDir: "./out",
+    baseName: "release",
 });
 
-console.log(report.totalBytes, report.overBudget);
-```
+console.log(report.totalBytes, report.overBudget);`} />
 
 Run it:
 
-```sh
-node release-banner.ts
-```
+<Code lang="sh" code={`node release-banner.ts`} />
 
 You get `./out/release.gif` and `./out/release.webp` plus a poster PNG. The template bakes a strict loop seam, so the animation repeats without a visible cut.
 
@@ -69,28 +65,22 @@ Each template adds its own props — for example `typewriter` takes `text`, `tag
 
 The `render` command loads a module and renders whatever it exports — a template result, an element-plus-timeline object, or a sync/async function returning either. Create `banner-cli.ts`:
 
-```ts
-import { cascadeBanner } from "takumi-motion/recipes";
+<Code lang="ts" code={`import { cascadeBanner } from "takumi-motion/recipes";
 
 export default await cascadeBanner({
-  title: "takumi-motion",
-  tagline: "deterministic banners from code",
-  accent: "#DF4D24",
-});
-```
+    title: "takumi-motion",
+    tagline: "deterministic banners from code",
+    accent: "#DF4D24",
+});`} />
 
 Then render it from the terminal:
 
 <Tabs>
   <TabItem label="pnpm">
-    ```sh
-    pnpm exec takumi-motion render banner-cli.ts --preset readme-wide --out ./out
-    ```
+<Code lang="sh" code={` pnpm exec takumi-motion render banner-cli.ts --preset readme-wide --out ./out`} />
   </TabItem>
   <TabItem label="npx">
-    ```sh
-    npx takumi-motion render banner-cli.ts --preset readme-wide --out ./out
-    ```
+<Code lang="sh" code={` npx takumi-motion render banner-cli.ts --preset readme-wide --out ./out`} />
   </TabItem>
 </Tabs>
 
@@ -100,18 +90,14 @@ The loader resolves, in order: the module's default export, a `banner` export, t
 
 The `--kit` flag renders a banner across several presets plus a static reduced-motion twin — the complete asset set for a project README:
 
-```sh
-pnpm exec takumi-motion render banner-cli.ts --kit --out ./assets
-```
+<Code lang="sh" code={`pnpm exec takumi-motion render banner-cli.ts --kit --out ./assets`} />
 
 Programmatically, the same call is `renderKit`:
 
-```ts
-import { renderKit } from "takumi-motion";
+<Code lang="ts" code={`import { renderKit } from "takumi-motion";
 
 const kit = await renderKit(bannerResult, { outDir: "./assets" });
-console.log(kit.files); // [{ path, role }, ...]
-```
+console.log(kit.files); // [{ path, role }, ...]`} />
 
 The kit writes `<base>-<preset>.<ext>` files for the `readme`, `readme-hd`, and `readme-lean` presets, plus `banner-static.png`. The CLI exits with code 2 when any variant exceeds its preset's byte budget.
 
@@ -123,23 +109,21 @@ The kit writes `<base>-<preset>.<ext>` files for the `readme`, `readme-hd`, and 
 
 When templates do not fit, build a timeline directly. `createTimeline` mirrors Motion's API — targets, keyframes, transitions — and renderers consume its JSON form. Timeline JSON is the interchange format every render path accepts:
 
-```ts
-import { createTimeline, renderBanner, h } from "takumi-motion";
+<Code lang="ts" code={`import { createTimeline, renderBanner, h } from "takumi-motion";
 
 const node = h("div", { style: { fontSize: 42, fontWeight: 700 } }, "ship it");
 
 const timeline = createTimeline({ fps: 20 }).add(
-  node,
-  { opacity: [0, 1], y: [-24, 0] },
-  { at: 0, duration: 600 },
+    node,
+    { opacity: [0, 1], y: [-24, 0] },
+    { at: 0, duration: 600 },
 );
 
 const report = await renderBanner({
-  node,
-  timeline: timeline.toJSON(),
-  outDir: "./out",
-});
-```
+    node,
+    timeline: timeline.toJSON(),
+    outDir: "./out",
+});`} />
 
 `renderBanner` runs `compileTimeline` internally — bake it yourself only when you need the CSS output for inspection. Timeline transforms (`shiftTimeline`, `concatTimelines`) compose longer sequences declaratively — the data equivalent of stacking scenes.
 
@@ -154,7 +138,7 @@ const report = await renderBanner({
 ### Your First Banner
 Source: /tutorials/first-banner
 
-import { Steps, Tabs, TabItem, Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard, Steps, TabItem, Tabs } from '@astrojs/starlight/components';
 
 In this tutorial you build and render a React banner — the golden path for producing an animated README badge or OG card. You install the package, define scenes, render server-side to WebP, and read the render report. The whole walkthrough takes about fifteen minutes.
 
@@ -168,28 +152,20 @@ In this tutorial you build and render a React banner — the golden path for pro
 
 Create an empty directory and initialize a package:
 
-```sh
-mkdir my-banner && cd my-banner
-pnpm init
-```
+<Code lang="sh" code={`mkdir my-banner && cd my-banner
+pnpm init`} />
 
 Install `takumi-motion`:
 
 <Tabs>
   <TabItem label="pnpm">
-    ```sh
-    pnpm add takumi-motion
-    ```
+<Code lang="sh" code={` pnpm add takumi-motion`} />
   </TabItem>
   <TabItem label="npm">
-    ```sh
-    npm add takumi-motion
-    ```
+<Code lang="sh" code={` npm add takumi-motion`} />
   </TabItem>
   <TabItem label="yarn">
-    ```sh
-    yarn add takumi-motion
-    ```
+<Code lang="sh" code={` yarn add takumi-motion`} />
   </TabItem>
 </Tabs>
 
@@ -203,42 +179,40 @@ A banner is a React component wrapped in `defineBanner`. Inside it, a `<Banner>`
 
 Create a file named `launch-banner.tsx`:
 
-```tsx
-import { defineBanner, Banner, Scene, Layer } from "takumi-motion/react";
+<Code lang="tsx" code={`import { defineBanner, Banner, Scene, Layer } from "takumi-motion/react";
 import { renderReactBanner } from "takumi-motion";
 
 export const launchBanner = defineBanner(function TakumiMotionLaunch() {
-  return (
+        return (
     <Banner preset="readme" theme="tokyo-night" transitionMs={250}>
-      <Layer bottom>
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            width: 850,
-            height: 3,
-            backgroundColor: "#7aa2f7",
-          }}
-        />
-      </Layer>
+            <Layer bottom>
+                    <div
+                            style={{
+                                    position: "absolute",
+                                    bottom: 0,
+                                    width: 850,
+                                    height: 3,
+                                    backgroundColor: "#7aa2f7",
+                            }}
+                    />
+            </Layer>
 
-      <Scene duration={100} enter="rise" exit="crossfade">
-        <h1 style={{ fontSize: 48, fontWeight: 700, color: "#c0caf5" }}>
-          takumi-motion
-        </h1>
-      </Scene>
+            <Scene duration={100} enter="rise" exit="crossfade">
+                    <h1 style={{ fontSize: 48, fontWeight: 700, color: "#c0caf5" }}>
+                            takumi-motion
+                    </h1>
+            </Scene>
     </Banner>
-  );
+        );
 });
 
 const report = await renderReactBanner({
-  banner: launchBanner,
-  formats: ["webp"],
-  outDir: "./out",
+        banner: launchBanner,
+        formats: ["webp"],
+        outDir: "./out",
 });
 
-console.log(report.lint);
-```
+console.log(report.lint);`} />
 
 <Aside type="caution">
   Pass `formats` (an array) and `outDir` (a directory), not `format` or a file path. The renderer picks file names from the preset and base name.
@@ -254,19 +228,15 @@ Three details carry the design:
 
 Run the file with Node:
 
-```sh
-node launch-banner.tsx
-```
+<Code lang="sh" code={`node launch-banner.tsx`} />
 
 The command prints a report and writes `./out/launch-banner.webp`:
 
-```json
-{
+<Code lang="json" code={`{
   "format": "webp",
   "bytes": 184320,
   "withinBudget": true
-}
-```
+}`} />
 
 Open the file in a browser — you see the title rise in, hold, and crossfade out. The same bytes render on every machine and every run.
 
@@ -287,9 +257,7 @@ A non-empty `report.lint` does not fail the render. It tells you what will cost 
 
 The same banner renders from the terminal without writing a driver script:
 
-```sh
-npx takumi-motion render launch-banner.tsx --out ./out
-```
+<Code lang="sh" code={`npx takumi-motion render launch-banner.tsx --out ./out`} />
 
 The CLI accepts `--format gif,webp`, `--budget 800000`, `--filmstrip`, and more — every flag is documented in the [CLI reference](/reference/cli).
 
@@ -309,7 +277,7 @@ Task-oriented recipes for specific goals.
 ### CI Quality Gates
 Source: /guides/ci-quality-gates
 
-import { Aside, LinkCard, Steps } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard, Steps } from '@astrojs/starlight/components';
 
 Use this guide to make broken banners unshippable. Two tools cover the gates: the `check` CLI command for fast, local-style verification, and `renderWithAudit` for a full determinism-probing audit as data.
 
@@ -326,29 +294,27 @@ The `check` command renders the banner once and audits it. With `--out` it also 
 
 ## Add a GitHub Actions gate
 
-```yaml
-name: banner-quality
+<Code lang="github-actions" code={`name: banner-quality
 on: [pull_request]
 
 jobs:
   banners:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - name: Check banners
-        run: |
-          pnpm exec takumi-motion check src/banners/readme.tsx
-          pnpm exec takumi-motion check src/banners/og.tsx --budget 3000000
-      - name: Render artifact on failure for review
-        if: failure()
-        run: pnpm exec takumi-motion render src/banners/readme.tsx --out ./out
-```
+ runs-on: ubuntu-latest
+ steps:
+   - uses: actions/checkout@v4
+   - uses: pnpm/action-setup@v4
+   - uses: actions/setup-node@v4
+     with:
+       node-version: 22
+       cache: pnpm
+   - run: pnpm install --frozen-lockfile
+   - name: Check banners
+     run: |
+       pnpm exec takumi-motion check src/banners/readme.tsx
+       pnpm exec takumi-motion check src/banners/og.tsx --budget 3000000
+   - name: Render artifact on failure for review
+     if: failure()
+     run: pnpm exec takumi-motion render src/banners/readme.tsx --out ./out`} />
 
 The failed run leaves the rendered files in `./out` for upload as an artifact, so reviewers see exactly what tripped the gate.
 
@@ -362,21 +328,19 @@ The failed run leaves the rendered files in `./out` for upload as an artifact, s
 
 Embed the same guarantees in your own pipeline. `renderWithAudit` renders, audits, and returns everything as JSON:
 
-```ts
-import { renderWithAudit } from "takumi-motion/audit";
+<Code lang="ts" code={`import { renderWithAudit } from "takumi-motion/audit";
 
 const { report, audit, exitCode, formatted } = await renderWithAudit({
-  banner: MyBanner,
-  preset: "readme",
-  budgetBytes: 2 * 1024 * 1024,
-  outDir: "./out",
+    banner: MyBanner,
+    preset: "readme",
+    budgetBytes: 2 * 1024 * 1024,
+    outDir: "./out",
 });
 
 if (exitCode !== 0) {
-  console.error(formatted);
-  process.exit(exitCode);
-}
-```
+    console.error(formatted);
+    process.exit(exitCode);
+}`} />
 
 The `audit` object contains `budget` (per-file verdicts), `extents` (violations with frame, target, edge, overflow), `seam`, `warnings`, and a `determinism` block — a full second render with a byte comparison of the first poster. Treat `audit.deterministic === false` as a hard alarm: it means the pipeline lost purity somewhere (a `Math.random` outside the shim, a clock read, a network fetch).
 
@@ -395,7 +359,7 @@ The `audit` object contains `budget` (per-file verdicts), `extents` (violations 
 ### Data-Driven Animations
 Source: /guides/data-driven-animations
 
-import { Aside, Steps, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard, Steps } from '@astrojs/starlight/components';
 
 Use this guide when a banner needs to visualize numbers — stars, revenue, latency, coverage. The data channel injects one JSON object at setup; nothing is fetched while frames render, which is what keeps the output byte-reproducible.
 
@@ -403,27 +367,21 @@ Use this guide when a banner needs to visualize numbers — stars, revenue, late
 
 A network fetch inside a render function is a determinism violation. File reads are fine — they are immutable inputs. Pass data programmatically or through the CLI:
 
-```ts
-const report = await renderReactBanner({
-  banner: MetricsReel,
-  data: metricsJson,
-});
-```
+<Code lang="ts" code={`const report = await renderReactBanner({
+    banner: MetricsReel,
+    data: metricsJson,
+});`} />
 
-```sh
-npx takumi-motion render metrics-reel.tsx --data metrics.json --format webp
-```
+<Code lang="sh" code={`npx takumi-motion render metrics-reel.tsx --data metrics.json --format webp`} />
 
 Inside the component tree, read the object anywhere with `useChartData`:
 
-```tsx
-import { useChartData } from "takumi-motion/react";
+<Code lang="tsx" code={`import { useChartData } from "takumi-motion/react";
 
 function Headline() {
-  const data = useChartData<{ stars: number }>();
-  return <span>{data.stars.toLocaleString("en-US")} stars</span>;
-}
-```
+    const data = useChartData<{ stars: number }>();
+    return <span>{data.stars.toLocaleString("en-US")} stars</span>;
+}`} />
 
 `useChartData(hint?)` throws with a hint listing registered keys when no channel exists; call `hasChartData()` when you need a quiet check.
 
@@ -431,15 +389,13 @@ function Headline() {
 
 `<LineChart>` builds one static SVG, then sweeps a per-frame `clip-path: inset()` across it — that clip reveal is the draw engine:
 
-```tsx
-<LineChart
-  data={{ series: [{ name: "rps", color: "#7aa2f7", points: [12, 30, 28, 55, 61, 80] }], labels: ["Jan", "Feb", "Mar"] }}
-  draw="reveal"
-  area
-  grid
-  showPoints
-/>
-```
+<Code lang="tsx" code={`<LineChart
+    data={{ series: [{ name: "rps", color: "#7aa2f7", points: [12, 30, 28, 55, 61, 80] }], labels: ["Jan", "Feb", "Mar"] }}
+    draw="reveal"
+    area
+    grid
+    showPoints
+/>`} />
 
 Key props: `draw="none"` renders the finished chart (use it for stills), `drawDurationFrames`/`drawDelayFrames` control the sweep, and `yTicks` sets gridline density. Data can arrive via props or the channel — omit the `data` prop and the chart reads `useChartData` itself.
 
@@ -447,18 +403,16 @@ Key props: `draw="none"` renders the finished chart (use it for stills), `drawDu
 
 `<BarChart>` grows bars with staggered closed-form springs; `<Donut>` sweeps a value arc:
 
-```tsx
-<BarChart
-  data={{ series: [{ name: "downloads", color: "#DF4D24", points: [820, 1240, 980, 1610] }] }}
-  orientation="up"
-  stagger
-  showValues
+<Code lang="tsx" code={`<BarChart
+    data={{ series: [{ name: "downloads", color: "#DF4D24", points: [820, 1240, 980, 1610] }] }}
+    orientation="up"
+    stagger
+    showValues
 />
 
 <Donut value={0.83} size={140} color="#7aa2f7">
-  <span style={{ fontSize: 24 }}>83%</span>
-</Donut>
-```
+    <span style={{ fontSize: 24 }}>83%</span>
+</Donut>`} />
 
 `<Donut>` validates `value` in the `[0, 1]` range. The default `paint="transform"` sweep is palette-safe for GIF; `paint="conic"` is the gradient alternative but trips the GIF dither lint on 1× surfaces.
 
@@ -466,11 +420,9 @@ Key props: `draw="none"` renders the finished chart (use it for stills), `drawDu
 
 `<CountUp>` accepts a `format` pattern — parsed once, rendered with `tabular-nums` forced on, so digit columns never reflow siblings:
 
-```tsx
-<CountUp to={4200} durationFrames={40} delayFrames={6} format="$,.0f" />
+<Code lang="tsx" code={`<CountUp to={4200} durationFrames={40} delayFrames={6} format="$,.0f" />
 <CountUp to={0.962} format=",.1f%" />
-<CountUp to={37} format="ms" />
-```
+<CountUp to={37} format="ms" />`} />
 
 Pattern grammar: `[prefix][, grouping][.Nf decimals][suffix]`. Function formers still work: `format={(v) => \`${Math.round(v).toLocaleString("en-US")}+ stars\`}`.
 
@@ -489,7 +441,7 @@ Pattern grammar: `[prefix][, grouping][.Nf decimals][suffix]`. Function formers 
 ### Parallel Capture
 Source: /guides/parallel-capture
 
-import { Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 Frame capture is embarrassingly parallel — each frame is a pure function of `(frame, props)` — so heavy banners render across worker threads. Use this guide when capture dominates your render time (large canvases, hundreds of frames, deep trees).
 
@@ -497,16 +449,14 @@ Frame capture is embarrassingly parallel — each frame is a pure function of `(
 
 Parallel capture requires the banner to be addressable as a module, because each worker imports it independently. Pass `bannerModule` instead of `banner`:
 
-```ts
-import { renderReactBanner } from "takumi-motion";
+<Code lang="ts" code={`import { renderReactBanner } from "takumi-motion";
 
 const report = await renderReactBanner({
-  bannerModule: "./launch-banner.tsx", // the file's default export
-  workers: "auto",
-  formats: ["webp"],
-  outDir: "./out",
-});
-```
+    bannerModule: "./launch-banner.tsx", // the file's default export
+    workers: "auto",
+    formats: ["webp"],
+    outDir: "./out",
+});`} />
 
 The module path's default export can be a React element, a `defineBanner` component, or a function returning either. The CLI equivalent is `--workers auto` (module banners only).
 
@@ -532,13 +482,11 @@ A numeric `workers: 4` forces the pool (capped at 16 and at the frame count) whe
 
 Debug a range without re-rendering everything:
 
-```ts
-const report = await renderReactBanner({
-  bannerModule: "./reel.tsx",
-  fromFrame: 120,
-  toFrame: 180,
-});
-```
+<Code lang="ts" code={`const report = await renderReactBanner({
+    bannerModule: "./reel.tsx",
+    fromFrame: 120,
+    toFrame: 180,
+});`} />
 
 The CLI pair is `--from 120 --to 180`. The report's `window` block records the range that ran.
 
@@ -557,7 +505,7 @@ The report's `timings` block splits capture, parse, audit, and encode. If `captu
 ### Preview and Inspect
 Source: /guides/preview-and-inspect
 
-import { Aside, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard, TabItem, Tabs } from '@astrojs/starlight/components';
 
 Four inspection tools ship with the engine. They answer different questions — picking the right one saves render cycles.
 
@@ -576,19 +524,13 @@ Every cell is rendered by the Rust engine — what you review is what you ship:
 
 <Tabs>
   <TabItem label="6 evenly spaced frames">
-    ```sh
-    npx takumi-motion render banner.tsx --filmstrip
-    ```
+<Code lang="sh" code={` npx takumi-motion render banner.tsx --filmstrip`} />
   </TabItem>
   <TabItem label="Explicit frames">
-    ```sh
-    npx takumi-motion render banner.tsx --filmstrip 0,15,30
-    ```
+<Code lang="sh" code={` npx takumi-motion render banner.tsx --filmstrip 0,15,30`} />
   </TabItem>
   <TabItem label="10 frames">
-    ```sh
-    npx takumi-motion render banner.tsx --filmstrip 10
-    ```
+<Code lang="sh" code={` npx takumi-motion render banner.tsx --filmstrip 10`} />
   </TabItem>
 </Tabs>
 
@@ -596,9 +538,7 @@ The filmstrip is self-contained HTML and byte-deterministic, so it diffs cleanly
 
 ## CSS preview player
 
-```sh
-npx takumi-motion preview banner.tsx -o banner-preview.html
-```
+<Code lang="sh" code={`npx takumi-motion preview banner.tsx -o banner-preview.html`} />
 
 The player replays the captured CSS in a browser — good for feeling the motion, approximate for layout. The encoded GIF/WebP remains the source of truth; when they disagree, trust the encoded output.
 
@@ -606,18 +546,14 @@ The player replays the captured CSS in a browser — good for feeling the motion
 
 The storyboard renders a labeled PNG grid of the whole timeline (cells rasterized by the engine — the sheet itself is a takumi document) plus a sidecar JSON with the sampled frame indices:
 
-```sh
-npx takumi-motion storyboard reel.tsx --frames 12 --columns 4 --out ./qa
-```
+<Code lang="sh" code={`npx takumi-motion storyboard reel.tsx --frames 12 --columns 4 --out ./qa`} />
 
 Use it to review scene order, transitions, and seam behavior at a glance. Programmatic form: `renderStoryboard` with `{ banner, frames, columns, scale }`.
 
 ## Single stills
 
-```sh
-npx takumi-motion render banner.tsx --still        # settled frame (~60% of the timeline)
-npx takumi-motion render banner.tsx --still 0      # explicit frame
-```
+<Code lang="sh" code={`npx takumi-motion render banner.tsx --still        # settled frame (~60% of the timeline)
+npx takumi-motion render banner.tsx --still 0      # explicit frame`} />
 
 Looping banners poster and still default to frame 0 — the landing frame. `renderStill` returns `{ png, bytes, path }` and supports all three source paths.
 
@@ -636,7 +572,7 @@ Looping banners poster and still default to frame 0 — the landing frame. `rend
 ### Reduce File Size
 Source: /guides/reduce-file-size
 
-import { Aside, LinkCard, Steps } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard, Steps } from '@astrojs/starlight/components';
 
 Encoded size is per-frame delta × frames. Everything in this guide attacks one of those two terms. Start from the report — it tells you which term dominates.
 
@@ -644,9 +580,7 @@ Encoded size is per-frame delta × frames. Everything in this guide attacks one 
 
 The CLI accepts a byte budget and negotiates frame rate for you:
 
-```sh
-npx takumi-motion render banner.tsx --budget 800000 --out ./out
-```
+<Code lang="sh" code={`npx takumi-motion render banner.tsx --budget 800000 --out ./out`} />
 
 When the first render exceeds the budget, the ladder re-renders at 75%, then 50% of the fps (floor 6 fps, first preset format) and keeps the first attempt that fits. The CLI exits `2` when even the ladder fails — wire that into CI as described in [Quality Gates](/guides/ci-quality-gates). Programmatically the same ladder is `optimizeBudget` from the root export.
 
@@ -654,20 +588,16 @@ When the first render exceeds the budget, the ladder re-renders at 75%, then 50%
 
 `--explain` (or `explain: true` on `renderReactBanner`) attaches per-frame attribution to `report.explain`: every frame is classified as a start, hold, or change, and each change is attributed to a channel — opacity, transform, clip, layout, paint, text, or structure:
 
-```sh
-npx takumi-motion render banner.tsx --explain --json | jq .explain.summary
-```
+<Code lang="sh" code={`npx takumi-motion render banner.tsx --explain --json | jq .explain.summary`} />
 
-```json
-{
+<Code lang="json" code={`{
   "totalFrames": 180,
   "uniqueFrames": 96,
   "holds": 84,
   "cheapFrames": 52,
   "churnFrames": 44,
   "churnRanges": [{ "from": 60, "to": 104 }]
-}
-```
+}`} />
 
 Cheap frames (opacity, clip) compress well. Churn frames (layout, text, structure) re-encode whole regions — a churn range in the middle of a static scene is your first target.
 
@@ -707,29 +637,27 @@ Drop to `readme-lean` when the host platform re-compresses your asset anyway. Fo
 ### Render Raw HTML
 Source: /guides/render-from-raw-html
 
-import { Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 The engine accepts raw HTML as a first-class source. Use this path when the animation already exists as markup — a design system snippet, a generated template, a no-JS pipeline — and you need the same deterministic outputs the React path produces.
 
 ## Render an HTML string
 
-```ts
-import { renderHtmlAnimation } from "takumi-motion";
+<Code lang="ts" code={`import { renderHtmlAnimation } from "takumi-motion";
 
 const report = await renderHtmlAnimation({
-  html: `<div id="badge"><h1>ship it</h1></div>`,
-  css: `
+        html: \`<div id="badge"><h1>ship it</h1></div>\`,
+        css: \`
     #badge { display: flex; align-items: center; height: 200px; }
     h1 { opacity: 0; animation: rise 1.2s ease-out forwards; }
     @keyframes rise { from { opacity: 0; transform: translateY(-24px); } to { opacity: 1; } }
-  `,
-  frames: 30,
-  fps: 20,
-  width: 850,
-  height: 200,
-  outDir: "./out",
-});
-```
+        \`,
+        frames: 30,
+        fps: 20,
+        width: 850,
+        height: 200,
+        outDir: "./out",
+});`} />
 
 `renderHtmlAnimation` extracts the `<body>` from full documents (or takes a fragment), hoists `<style>` blocks, samples `frames` deterministic poses of the CSS animations, and encodes the preset formats. The report carries `cssEntries`, `styleBlocksHoisted`, `files`, `posters`, `fonts`, and budget fields.
 
@@ -737,9 +665,7 @@ const report = await renderHtmlAnimation({
 
 The `render` command accepts `.html` and `.htm` files directly:
 
-```sh
-npx takumi-motion render badge.html --css badge.css --font-file Brand.ttf --frames 40 --out ./out
-```
+<Code lang="sh" code={`npx takumi-motion render badge.html --css badge.css --font-file Brand.ttf --frames 40 --out ./out`} />
 
 | Flag | Purpose |
 | --- | --- |
@@ -760,12 +686,10 @@ npx takumi-motion render badge.html --css badge.css --font-file Brand.ttf --fram
 
 `renderStill` accepts the same source trio — react banner, html, or declarative node+timeline:
 
-```ts
-import { renderStill } from "takumi-motion";
+<Code lang="ts" code={`import { renderStill } from "takumi-motion";
 
 const still = await renderStill({ html: fragment, css, width: 1200, height: 630 });
-console.log(still.png.length); // PNG bytes
-```
+console.log(still.png.length); // PNG bytes`} />
 
 ## Next steps
 
@@ -778,7 +702,7 @@ console.log(still.png.length); // PNG bytes
 ### Seamless Loops
 Source: /guides/seamless-loops
 
-import { Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 A looping README badge shows its cut point every few seconds unless the last frame equals the first. Takumi Motion guarantees that equality byte-for-byte instead of asking you to eyeball it. Use this guide whenever you set `<Banner loop>`.
 
@@ -786,18 +710,14 @@ A looping README badge shows its cut point every few seconds unless the last fra
 
 Declare `loop` on the banner and mark the boundary that closes the circle. Either the first scene enters with `wrap` or the last scene exits with `wrap` — one of the two, never both:
 
-```tsx
-<Banner loop fps={24}>
-  <Scene duration={90}>…</Scene>
-  <Scene duration={76} exit="wrap">…</Scene>
-</Banner>
-```
+<Code lang="tsx" code={`<Banner loop fps={24}>
+    <Scene duration={90}>…</Scene>
+    <Scene duration={76} exit="wrap">…</Scene>
+</Banner>`} />
 
 `exit="wrap"` appends a crossfade tail into scene 1's frozen frame-0 layer; at the final wrap frame the leaving node drops, so the last frame and frame 0 are byte-identical by construction. The report carries the verdict:
 
-```json
-{ "seam": { "mode": "exact", "loop": true } }
-```
+<Code lang="json" code={`{ "seam": { "mode": "exact", "loop": true } }`} />
 
 <Aside type="caution">
   A `<Banner loop>` without a wrap earns the `TM_LOOP_SEAM` lint pointing at the fix. A `wrap` transition is honored only on the last scene of a looping banner.
@@ -818,17 +738,15 @@ The root export includes four composable utilities:
 
 A complete declarative loop:
 
-```ts
-import { createTimeline, alignLoopPeriod, fadeWrap, renderBanner } from "takumi-motion";
+<Code lang="ts" code={`import { createTimeline, alignLoopPeriod, fadeWrap, renderBanner } from "takumi-motion";
 
 const timeline = createTimeline({ fps: 20 })
-  .add(node, { y: [0, -12, 0] }, { duration: 1200, repeat: Infinity, repeatType: "mirror" });
+    .add(node, { y: [0, -12, 0] }, { duration: 1200, repeat: Infinity, repeatType: "mirror" });
 
 const aligned = alignLoopPeriod(timeline);
 const wrapped = fadeWrap(aligned, { selector: "#badge", inMs: 350, outMs: 350 });
 
-const report = await renderBanner({ node, timeline: wrapped, outDir: "./out" });
-```
+const report = await renderBanner({ node, timeline: wrapped, outDir: "./out" });`} />
 
 ## Verify before shipping
 
@@ -949,7 +867,7 @@ The loader resolves each candidate as `mod.default ?? mod.banner ?? mod.element`
 ### Core Engine API
 Source: /reference/core-engine
 
-import { Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 The root export (`takumi-motion`) exposes the authoring and evaluation core. React is an optional peer — everything on this page runs without it.
 
@@ -957,11 +875,9 @@ The root export (`takumi-motion`) exposes the authoring and evaluation core. Rea
 
 ### `createTimeline(options?)` → `Timeline`
 
-```ts
-const timeline = createTimeline({ fps: 20, defaultTransition })
-  .add(target, keyframes, options)
-  .label("intro");
-```
+<Code lang="ts" code={`const timeline = createTimeline({ fps: 20, defaultTransition })
+    .add(target, keyframes, options)
+    .label("intro");`} />
 
 `add(target, keyframes, options?)` accepts partial records of `AnimatableProperty` → keyframes and returns `TimelineTarget` handles. Options:
 
@@ -977,14 +893,12 @@ Default transitions mirror Motion: more than 2 keyframes → tween 800 ms; trans
 
 `Timeline.toJSON()` produces the interchange format every renderer accepts:
 
-```ts
-interface TimelineJSON {
-  version: 1;
-  durationMs: number;
-  tracks: TrackJSON[];
-  wrap?: { selector: string };
-}
-```
+<Code lang="ts" code={`interface TimelineJSON {
+    version: 1;
+    durationMs: number;
+    tracks: TrackJSON[];
+    wrap?: { selector: string };
+}`} />
 
 ### Transforms
 
@@ -1139,18 +1053,16 @@ The three interpolate variants are intentionally distinct: context-free vs conte
 ### Lint Codes
 Source: /reference/lint-codes
 
-import { Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 Every render (`renderReactBanner`, `renderBanner`, `renderWithAudit`) carries a `lint: LintWarning[]` channel alongside the legacy `warnings: string[]`. Findings are deduplicated, capped at 20 per code (with a truncation notice), and survive `--json` — a consumer platform can render them, filter them, or fail CI on specific codes.
 
-```ts
-interface LintWarning {
-  code: LintCode;   // stable TM_* identifier
-  message: string;  // diagnosis, with the offending key/value/path
-  hint?: string;    // the fix, phrased as what to do instead
-  severity: "warn" | "info";
-}
-```
+<Code lang="ts" code={`interface LintWarning {
+    code: LintCode;   // stable TM_* identifier
+    message: string;  // diagnosis, with the offending key/value/path
+    hint?: string;    // the fix, phrased as what to do instead
+    severity: "warn" | "info";
+}`} />
 
 ## Style safety
 
@@ -1186,14 +1098,12 @@ Type-level safety pairs with the lint: `satisfies TakumiStyle` turns typos into 
 
 ## Working with the channel
 
-```ts
-const report = await renderReactBanner({ banner: MyBanner });
+<Code lang="ts" code={`const report = await renderReactBanner({ banner: MyBanner });
 
 for (const warning of report.lint) {
-  console.log(`[${warning.severity}] ${warning.code}: ${warning.message}`);
-  if (warning.hint) console.log(`  fix: ${warning.hint}`);
-}
-```
+    console.log(\`[\${warning.severity}] \${warning.code}: \${warning.message}\`);
+    if (warning.hint) console.log(\`  fix: \${warning.hint}\`);
+}`} />
 
 Helpers: `collectLintWarnings` dedupes, `formatLint` renders text, `camelHint` produces the kebab→camel suggestion, `NO_LINT` is the empty channel. Strict mode (unknown-property checking) is opt-in per lint call.
 
@@ -1455,21 +1365,19 @@ Charts read the data channel via `useChartData` when the `data` prop is absent. 
 ### Renderers & Reports
 Source: /reference/renderers
 
-import { Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 Every renderer returns a report object — the report is the API. All of them are deterministic: same inputs produce the same bytes at any concurrency and any worker count.
 
 ## `renderBanner` — declarative path
 
-```ts
-const report = await renderBanner({
-  node,              // takumi node tree, or a React-shaped element
-  timeline,          // TimelineJSON (timeline.toJSON())
-  preset: "readme",  // explicit options win over the preset
-  outDir: "./out",   // omit to receive buffers only
-  baseName: "banner",
-});
-```
+<Code lang="ts" code={`const report = await renderBanner({
+    node,              // takumi node tree, or a React-shaped element
+    timeline,          // TimelineJSON (timeline.toJSON())
+    preset: "readme",  // explicit options win over the preset
+    outDir: "./out",   // omit to receive buffers only
+    baseName: "banner",
+});`} />
 
 Key options beyond the surface fields: `formats?`, `fps?`, `posters?` (default one at 60% of the timeline; `false` to skip), `fonts?`, `webpQuality?`/`quality?`, `lossless?`, `budgetBytes?`, `collapseGifHolds?` (default `true`), `sequence?`, `spriteSheet?`, `parallel?` (default `true`).
 
@@ -1477,14 +1385,12 @@ Key options beyond the surface fields: `formats?`, `fps?`, `posters?` (default o
 
 ## `renderReactBanner` — React path
 
-```ts
-const report = await renderReactBanner({
-  banner: MyBanner,           // or bannerModule: "./banner.tsx" (enables workers)
-  workers: "auto",
-  formats: ["webp"],
-  outDir: "./out",
-});
-```
+<Code lang="ts" code={`const report = await renderReactBanner({
+    banner: MyBanner,           // or bannerModule: "./banner.tsx" (enables workers)
+    workers: "auto",
+    formats: ["webp"],
+    outDir: "./out",
+});`} />
 
 Options: `banner` xor `bannerModule`, `workers?: number | "auto"`, `preset?`, `fps?`, `formats?`, `outDir?`, `baseName?`, `fonts?`, `posters?` (default: frame 0 for loops, else the settled 60% frame), `collapseGifHolds?`, `safeZone?` (8), `sequence?`, `spriteSheet?`, `parallel?`, `concurrency?`, `fromFrame?`/`toFrame?`, `data?`, `explain?: boolean`, plus `SurfaceSpec` fields.
 
@@ -1503,11 +1409,9 @@ Everything `BannerReport` carries, plus:
 
 ## `renderStill` — one PNG, any source
 
-```ts
-const still = await renderStill({ banner: MyBanner });           // react
+<Code lang="ts" code={`const still = await renderStill({ banner: MyBanner });           // react
 const still = await renderStill({ html, css });                  // raw HTML
-const still = await renderStill({ node, timeline });             // declarative
-```
+const still = await renderStill({ node, timeline });             // declarative`} />
 
 Options: `frame?` (default: settled ~60% frame; frame 0 for HTML), `width`/`height`/`dpr`/`fps`, `quality`/`lossless`, `budgetBytes?`, `fonts?`/`fontFiles?`, `outDir?` (writes `<base>.png`), `concurrency?`. Returns `{ source, frame, timeMs, width, height, devicePixelRatio, physicalWidth, physicalHeight, background, png, bytes, ms, path }`.
 
@@ -1520,40 +1424,34 @@ Options: `frame?` (default: settled ~60% frame; frame 0 for HTML), `width`/`heig
 
 ## `renderHtmlAnimation` — raw HTML source
 
-```ts
-const report = await renderHtmlAnimation({
-  html,              // fragment or full document (<style> hoisted)
-  css?,              // extra stylesheet(s)
-  frames: 30,
-  outDir: "./out",
-});
-```
+<Code lang="ts" code={`const report = await renderHtmlAnimation({
+    html,              // fragment or full document (<style> hoisted)
+    css?,              // extra stylesheet(s)
+    frames: 30,
+    outDir: "./out",
+});`} />
 
 Returns `HtmlSourceReport` with `surface`, `frames`, `durationMs`, `cssEntries`, `styleBlocksHoisted`, `files`, `posters`, `fonts`, `fontFiles`, `totalBytes`, `budgetBytes`, `overBudget`, `warnings`, `collapse`.
 
 ## `renderWithAudit` — audit as data
 
-```ts
-import { renderWithAudit } from "takumi-motion/audit";
+<Code lang="ts" code={`import { renderWithAudit } from "takumi-motion/audit";
 
 const { report, audit, exitCode, formatted } = await renderWithAudit({
-  banner: MyBanner,          // or node+timeline, or html+css
-  preset: "readme",
-  budgetBytes: 2 * 1024 * 1024,
-  outDir: "./out",
-});
-```
+    banner: MyBanner,          // or node+timeline, or html+css
+    preset: "readme",
+    budgetBytes: 2 * 1024 * 1024,
+    outDir: "./out",
+});`} />
 
 `AuditReport`: `generator`, `generatorVersion`, `source`, `surface`, `timeline { frames, durationMs }`, `budget { budgetBytes, totalBytes, overBudget, files[] }`, `extents { checked, violations[], hardFailures }`, `seam { mode, loop }`, `determinism { deterministic, checkedBytes, detail }`, `warnings`. Exit codes: `0` pass, `1` content failure, `2` over budget. The determinism probe performs a full second render and byte-compares the first poster.
 
 ## `renderKit` — the full asset set
 
-```ts
-const kit = await renderKit(bannerResult, {
-  outDir: "./assets",
-  presets: ["readme", "readme-hd", "readme-lean"], // default
-});
-```
+<Code lang="ts" code={`const kit = await renderKit(bannerResult, {
+    outDir: "./assets",
+    presets: ["readme", "readme-hd", "readme-lean"], // default
+});`} />
 
 Returns `KitReport { variants[], files[] ({ path, role }), totalBytes }` and writes `<base>-<preset>.<ext>` plus `banner-static.png` — a reduced-motion twin. The CLI exits 2 when any variant exceeds its budget. Declarative banners only.
 
@@ -1584,20 +1482,18 @@ Architecture, determinism, performance, and size doctrine.
 ### Architecture
 Source: /explanation/architecture
 
-import { Aside, LinkCard, FileTree } from '@astrojs/starlight/components';
+import { Aside, Code, FileTree, LinkCard } from '@astrojs/starlight/components';
 
 Takumi Motion is a bridge between two worlds: high-level React (or raw HTML) authoring, and a Rust rasterizer that renders CSS-style layouts natively. The bridge is deliberately narrow — a JSON timeline, a static markup tree per frame, and integer milliseconds.
 
 ## The pipeline
 
-```text
-AUTHOR    React components or templates produce a node tree + TimelineJSON
+<Code lang="text" code={`AUTHOR    React components or templates produce a node tree + TimelineJSON
 PLAN      Scene windows, transitions, and frame grids resolve up front
 CAPTURE   Each frame renders to static markup (pure function of frame index)
 COMPILE   The timeline bakes onto a shared fps grid (CSS keyframes)
 RASTER    The Rust engine (takumi) renders markup + styles to pixels
-ENCODE    GIF / WebP / APNG encoders emit files; post-processing runs
-```
+ENCODE    GIF / WebP / APNG encoders emit files; post-processing runs`} />
 
 Four properties hold everywhere:
 
@@ -1608,15 +1504,13 @@ Four properties hold everywhere:
 
 ## Capture lifecycle in detail
 
-```text
-PROBE    <Banner> registers meta + scene inputs (children do not render yet)
+<Code lang="text" code={`PROBE    <Banner> registers meta + scene inputs (children do not render yet)
 PLAN     planBanner() computes frame-exact scene windows
 PREWARM  each scene's opening frame renders once (FitText/Morph discovery;
-         outputs are discarded — components may see one extra render per scene)
+      outputs are discarded — components may see one extra render per scene)
 FRAMES   the real per-frame loop produces the markup that gets encoded
 CHUNK    byte-identical adjacent frames merge
-LINT     style trees + markup + registry findings assemble report.lint
-```
+LINT     style trees + markup + registry findings assemble report.lint`} />
 
 The prewarm pass is why `<FitText>` and `<Morph>` can measure through the real renderer and still render synchronously in the frame loop. Prewarm outputs never reach the encoder.
 
@@ -1658,7 +1552,7 @@ A headless browser brings nondeterminism (font hinting, timers, layout races), h
 ### Determinism
 Source: /explanation/determinism
 
-import { Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 "Deterministic" is the product. This page explains the mechanisms that make every render byte-reproducible — and the rules your code must follow to keep them intact.
 
@@ -1686,15 +1580,13 @@ The compile step bakes every track onto a shared fps grid plus structural bounda
 
 `renderWithAudit` renders twice and byte-compares the first poster:
 
-```json
-{
-  "determinism": {
-    "deterministic": true,
-    "checkedBytes": 18432,
-    "detail": "poster @ 1500ms byte-identical across renders"
-  }
-}
-```
+<Code lang="json" code={`{
+    "determinism": {
+  "deterministic": true,
+  "checkedBytes": 18432,
+  "detail": "poster @ 1500ms byte-identical across renders"
+    }
+}`} />
 
 `deterministic: false` is a hard alarm — it means an input varied between renders. The usual culprits, in order of likelihood:
 
@@ -1782,7 +1674,7 @@ Encoded size is per-frame delta × frames. The engine's design keeps both terms 
 
 ## Home (/)
 
-import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
+import { Aside, Card, CardGrid, LinkButton, LinkCard } from '@astrojs/starlight/components';
 
 Takumi Motion compiles animation timelines ahead of time, captures frames deterministically, and delegates rasterization to a Rust backend. No headless browser, no layout thrashing, no nondeterministic replays — the same input produces the same bytes, every time.
 
@@ -1802,6 +1694,8 @@ Takumi Motion compiles animation timelines ahead of time, captures frames determ
     Use the X-ray, budget ladder, and size doctrine to cut GIF/WebP bytes by an order of magnitude.
   </Card>
 </CardGrid>
+
+<LinkButton href="/tutorials/declarative-banners/" icon="right-arrow">Start the tutorial</LinkButton>
 
 ## Why Takumi Motion
 

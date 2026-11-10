@@ -4,21 +4,19 @@ description: Options and report shapes for renderBanner, renderReactBanner, rend
 type: reference
 ---
 
-import { Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 Every renderer returns a report object — the report is the API. All of them are deterministic: same inputs produce the same bytes at any concurrency and any worker count.
 
 ## `renderBanner` — declarative path
 
-```ts
-const report = await renderBanner({
-  node,              // takumi node tree, or a React-shaped element
-  timeline,          // TimelineJSON (timeline.toJSON())
-  preset: "readme",  // explicit options win over the preset
-  outDir: "./out",   // omit to receive buffers only
-  baseName: "banner",
-});
-```
+<Code lang="ts" code={`const report = await renderBanner({
+    node,              // takumi node tree, or a React-shaped element
+    timeline,          // TimelineJSON (timeline.toJSON())
+    preset: "readme",  // explicit options win over the preset
+    outDir: "./out",   // omit to receive buffers only
+    baseName: "banner",
+});`} />
 
 Key options beyond the surface fields: `formats?`, `fps?`, `posters?` (default one at 60% of the timeline; `false` to skip), `fonts?`, `webpQuality?`/`quality?`, `lossless?`, `budgetBytes?`, `collapseGifHolds?` (default `true`), `sequence?`, `spriteSheet?`, `parallel?` (default `true`).
 
@@ -26,14 +24,12 @@ Key options beyond the surface fields: `formats?`, `fps?`, `posters?` (default o
 
 ## `renderReactBanner` — React path
 
-```ts
-const report = await renderReactBanner({
-  banner: MyBanner,           // or bannerModule: "./banner.tsx" (enables workers)
-  workers: "auto",
-  formats: ["webp"],
-  outDir: "./out",
-});
-```
+<Code lang="ts" code={`const report = await renderReactBanner({
+    banner: MyBanner,           // or bannerModule: "./banner.tsx" (enables workers)
+    workers: "auto",
+    formats: ["webp"],
+    outDir: "./out",
+});`} />
 
 Options: `banner` xor `bannerModule`, `workers?: number | "auto"`, `preset?`, `fps?`, `formats?`, `outDir?`, `baseName?`, `fonts?`, `posters?` (default: frame 0 for loops, else the settled 60% frame), `collapseGifHolds?`, `safeZone?` (8), `sequence?`, `spriteSheet?`, `parallel?`, `concurrency?`, `fromFrame?`/`toFrame?`, `data?`, `explain?: boolean`, plus `SurfaceSpec` fields.
 
@@ -52,11 +48,9 @@ Everything `BannerReport` carries, plus:
 
 ## `renderStill` — one PNG, any source
 
-```ts
-const still = await renderStill({ banner: MyBanner });           // react
+<Code lang="ts" code={`const still = await renderStill({ banner: MyBanner });           // react
 const still = await renderStill({ html, css });                  // raw HTML
-const still = await renderStill({ node, timeline });             // declarative
-```
+const still = await renderStill({ node, timeline });             // declarative`} />
 
 Options: `frame?` (default: settled ~60% frame; frame 0 for HTML), `width`/`height`/`dpr`/`fps`, `quality`/`lossless`, `budgetBytes?`, `fonts?`/`fontFiles?`, `outDir?` (writes `<base>.png`), `concurrency?`. Returns `{ source, frame, timeMs, width, height, devicePixelRatio, physicalWidth, physicalHeight, background, png, bytes, ms, path }`.
 
@@ -69,40 +63,34 @@ Options: `frame?` (default: settled ~60% frame; frame 0 for HTML), `width`/`heig
 
 ## `renderHtmlAnimation` — raw HTML source
 
-```ts
-const report = await renderHtmlAnimation({
-  html,              // fragment or full document (<style> hoisted)
-  css?,              // extra stylesheet(s)
-  frames: 30,
-  outDir: "./out",
-});
-```
+<Code lang="ts" code={`const report = await renderHtmlAnimation({
+    html,              // fragment or full document (<style> hoisted)
+    css?,              // extra stylesheet(s)
+    frames: 30,
+    outDir: "./out",
+});`} />
 
 Returns `HtmlSourceReport` with `surface`, `frames`, `durationMs`, `cssEntries`, `styleBlocksHoisted`, `files`, `posters`, `fonts`, `fontFiles`, `totalBytes`, `budgetBytes`, `overBudget`, `warnings`, `collapse`.
 
 ## `renderWithAudit` — audit as data
 
-```ts
-import { renderWithAudit } from "takumi-motion/audit";
+<Code lang="ts" code={`import { renderWithAudit } from "takumi-motion/audit";
 
 const { report, audit, exitCode, formatted } = await renderWithAudit({
-  banner: MyBanner,          // or node+timeline, or html+css
-  preset: "readme",
-  budgetBytes: 2 * 1024 * 1024,
-  outDir: "./out",
-});
-```
+    banner: MyBanner,          // or node+timeline, or html+css
+    preset: "readme",
+    budgetBytes: 2 * 1024 * 1024,
+    outDir: "./out",
+});`} />
 
 `AuditReport`: `generator`, `generatorVersion`, `source`, `surface`, `timeline { frames, durationMs }`, `budget { budgetBytes, totalBytes, overBudget, files[] }`, `extents { checked, violations[], hardFailures }`, `seam { mode, loop }`, `determinism { deterministic, checkedBytes, detail }`, `warnings`. Exit codes: `0` pass, `1` content failure, `2` over budget. The determinism probe performs a full second render and byte-compares the first poster.
 
 ## `renderKit` — the full asset set
 
-```ts
-const kit = await renderKit(bannerResult, {
-  outDir: "./assets",
-  presets: ["readme", "readme-hd", "readme-lean"], // default
-});
-```
+<Code lang="ts" code={`const kit = await renderKit(bannerResult, {
+    outDir: "./assets",
+    presets: ["readme", "readme-hd", "readme-lean"], // default
+});`} />
 
 Returns `KitReport { variants[], files[] ({ path, role }), totalBytes }` and writes `<base>-<preset>.<ext>` plus `banner-static.png` — a reduced-motion twin. The CLI exits 2 when any variant exceeds its budget. Declarative banners only.
 

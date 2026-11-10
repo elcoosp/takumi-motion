@@ -4,18 +4,16 @@ description: Every TM_* authoring lint code — what it catches, why it matters,
 type: reference
 ---
 
-import { Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 Every render (`renderReactBanner`, `renderBanner`, `renderWithAudit`) carries a `lint: LintWarning[]` channel alongside the legacy `warnings: string[]`. Findings are deduplicated, capped at 20 per code (with a truncation notice), and survive `--json` — a consumer platform can render them, filter them, or fail CI on specific codes.
 
-```ts
-interface LintWarning {
-  code: LintCode;   // stable TM_* identifier
-  message: string;  // diagnosis, with the offending key/value/path
-  hint?: string;    // the fix, phrased as what to do instead
-  severity: "warn" | "info";
-}
-```
+<Code lang="ts" code={`interface LintWarning {
+    code: LintCode;   // stable TM_* identifier
+    message: string;  // diagnosis, with the offending key/value/path
+    hint?: string;    // the fix, phrased as what to do instead
+    severity: "warn" | "info";
+}`} />
 
 ## Style safety
 
@@ -51,14 +49,12 @@ Type-level safety pairs with the lint: `satisfies TakumiStyle` turns typos into 
 
 ## Working with the channel
 
-```ts
-const report = await renderReactBanner({ banner: MyBanner });
+<Code lang="ts" code={`const report = await renderReactBanner({ banner: MyBanner });
 
 for (const warning of report.lint) {
-  console.log(`[${warning.severity}] ${warning.code}: ${warning.message}`);
-  if (warning.hint) console.log(`  fix: ${warning.hint}`);
-}
-```
+    console.log(\`[\${warning.severity}] \${warning.code}: \${warning.message}\`);
+    if (warning.hint) console.log(\`  fix: \${warning.hint}\`);
+}`} />
 
 Helpers: `collectLintWarnings` dedupes, `formatLint` renders text, `camelHint` produces the kebab→camel suggestion, `NO_LINT` is the empty channel. Strict mode (unknown-property checking) is opt-in per lint call.
 

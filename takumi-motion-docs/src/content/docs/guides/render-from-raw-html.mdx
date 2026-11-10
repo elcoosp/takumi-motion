@@ -4,29 +4,27 @@ description: Turn a plain HTML fragment with CSS into deterministic GIF, WebP, A
 type: how-to
 ---
 
-import { Aside, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
 
 The engine accepts raw HTML as a first-class source. Use this path when the animation already exists as markup — a design system snippet, a generated template, a no-JS pipeline — and you need the same deterministic outputs the React path produces.
 
 ## Render an HTML string
 
-```ts
-import { renderHtmlAnimation } from "takumi-motion";
+<Code lang="ts" code={`import { renderHtmlAnimation } from "takumi-motion";
 
 const report = await renderHtmlAnimation({
-  html: `<div id="badge"><h1>ship it</h1></div>`,
-  css: `
+        html: \`<div id="badge"><h1>ship it</h1></div>\`,
+        css: \`
     #badge { display: flex; align-items: center; height: 200px; }
     h1 { opacity: 0; animation: rise 1.2s ease-out forwards; }
     @keyframes rise { from { opacity: 0; transform: translateY(-24px); } to { opacity: 1; } }
-  `,
-  frames: 30,
-  fps: 20,
-  width: 850,
-  height: 200,
-  outDir: "./out",
-});
-```
+        \`,
+        frames: 30,
+        fps: 20,
+        width: 850,
+        height: 200,
+        outDir: "./out",
+});`} />
 
 `renderHtmlAnimation` extracts the `<body>` from full documents (or takes a fragment), hoists `<style>` blocks, samples `frames` deterministic poses of the CSS animations, and encodes the preset formats. The report carries `cssEntries`, `styleBlocksHoisted`, `files`, `posters`, `fonts`, and budget fields.
 
@@ -34,9 +32,7 @@ const report = await renderHtmlAnimation({
 
 The `render` command accepts `.html` and `.htm` files directly:
 
-```sh
-npx takumi-motion render badge.html --css badge.css --font-file Brand.ttf --frames 40 --out ./out
-```
+<Code lang="sh" code={`npx takumi-motion render badge.html --css badge.css --font-file Brand.ttf --frames 40 --out ./out`} />
 
 | Flag | Purpose |
 | --- | --- |
@@ -57,12 +53,10 @@ npx takumi-motion render badge.html --css badge.css --font-file Brand.ttf --fram
 
 `renderStill` accepts the same source trio — react banner, html, or declarative node+timeline:
 
-```ts
-import { renderStill } from "takumi-motion";
+<Code lang="ts" code={`import { renderStill } from "takumi-motion";
 
 const still = await renderStill({ html: fragment, css, width: 1200, height: 630 });
-console.log(still.png.length); // PNG bytes
-```
+console.log(still.png.length); // PNG bytes`} />
 
 ## Next steps
 

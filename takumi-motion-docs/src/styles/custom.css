@@ -10,9 +10,9 @@
 */
 
 :root {
-  --sl-color-accent-low: hsl(13, 100%, 96%);
-  --sl-color-accent: hsl(13, 92%, 47%);
-  --sl-color-accent-high: hsl(13, 73%, 38%);
+  --sl-color-accent-low: hsl(15 57% 93%);
+  --sl-color-accent: hsl(15 57% 35%);
+  --sl-color-accent-high: hsl(15 57% 28%);
   /* Belt-and-braces for any component still reading the numbered ramp */
   --sl-color-accent-600: hsl(13, 73%, 38%);
   --sl-color-accent-500: hsl(13, 92%, 47%);
@@ -20,9 +20,9 @@
 }
 
 [data-theme='dark'] {
-  --sl-color-accent-low: hsl(13, 55%, 16%);
-  --sl-color-accent: hsl(13, 96%, 60%);
-  --sl-color-accent-high: hsl(13, 100%, 74%);
+  --sl-color-accent-low: hsl(15 57% 16%);
+  --sl-color-accent: hsl(15 57% 60%);
+  --sl-color-accent-high: hsl(15 57% 75%);
   --sl-color-accent-600: hsl(13, 96%, 60%);
   --sl-color-accent-500: hsl(13, 96%, 60%);
   --sl-color-accent-400: hsl(13, 100%, 74%);

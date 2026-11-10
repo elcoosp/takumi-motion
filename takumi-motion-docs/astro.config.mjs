@@ -1,21 +1,39 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import astroTakumi from 'astro-takumi';
+import fs from 'node:fs';
+import { makeRender } from './src/og-render.mjs';
 import linksValidator from 'starlight-links-validator';
 import imageZoom from 'starlight-image-zoom';
 import headingBadges from 'starlight-heading-badges';
 
 // https://astro.build/config
+const __logoB64 = fs.readFileSync("./src/assets/logo.png").toString("base64");
+const __render = makeRender({
+  logoDataUrl: "data:image/png;base64," + __logoB64,
+  accentHex: "#8c4026",
+  accentHexA12: "#8c40261a",
+  domain: "takumi-motion.vercel.app",
+  projectName: "Takumi Motion",
+});
+
 export default defineConfig({
+	vite: {
+		ssr: { external: ["jsdom", "astro-takumi"] },
+	},
+  site: 'https://takumi-motion.vercel.app',
   integrations: [
     starlight({
+			routeMiddleware: "./src/routeData.ts",
+      expressiveCode: {
+      	themes: ['github-light', 'github-dark'],
+      },
       title: 'Takumi Motion',
       description:
         'Deterministic server-side animation engine: any React component or raw HTML string becomes a GIF, WebP, APNG, PNG sequence, sprite sheet, or still — rendered by the Rust takumi engine, byte-identical on every run.',
-      logo: {
-        light: './src/assets/logo-light.svg',
-        dark: './src/assets/logo-dark.svg',
-      },
-      favicon: '/favicon.svg',
+
+      logo: { src: './src/assets/logo.png' },
+      favicon: '/favicon.png',
       customCss: ['./src/styles/custom.css'],
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/elcoosp/takumi-motion' },
@@ -78,5 +96,16 @@ export default defineConfig({
         },
       ],
     }),
-  ],
+  
+		astroTakumi({
+			options: {
+				domBackend: "linkedom",
+				fonts: [fs.readFileSync("./node_modules/@fontsource/roboto/files/roboto-latin-400-normal.woff2")],
+				width: 1200,
+				height: 630,
+				format: "png",
+			},
+			render: __render,
+		}),
+	],
 });

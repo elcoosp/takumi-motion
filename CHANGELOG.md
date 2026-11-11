@@ -1,5 +1,14 @@
 # takumi-motion — CHANGELOG
 
+## [1.0.5](https://github.com/elcoosp/takumi-motion/compare/v1.0.4...v1.0.5) (2026-11-11)
+
+
+### Bug Fixes
+
+* **ci:** regenerate lockfile to resolve frozen-lockfile error ([5fdf9f1](https://github.com/elcoosp/takumi-motion/commit/5fdf9f18dac797436c05c973b02090ead5b45011))
+* **ci:** resolve lockfile error and update all actions to latest ([93c26ee](https://github.com/elcoosp/takumi-motion/commit/93c26ee7b5f14937c0720e8e8abcd2650156eafe))
+* trigger release-please after lockfile and CI fixes ([d59dea6](https://github.com/elcoosp/takumi-motion/commit/d59dea618e48de90038bf8b7b030f3f53ee2d63a))
+
 ## [1.0.4](https://github.com/elcoosp/takumi-motion/compare/v1.0.3...v1.0.4) (2026-11-11)
 
 

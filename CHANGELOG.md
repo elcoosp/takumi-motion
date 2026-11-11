@@ -1,5 +1,14 @@
 # takumi-motion — CHANGELOG
 
+## [1.0.6](https://github.com/elcoosp/takumi-motion/compare/v1.0.5...v1.0.6) (2026-11-11)
+
+
+### Bug Fixes
+
+* **ci:** enforce npm 11.5.1+ and --provenance for OIDC publishing ([18e52fc](https://github.com/elcoosp/takumi-motion/commit/18e52fc15e3769bc2d64843ee1fb716cf2c70a27))
+* **ci:** use npm publish for OIDC trusted publishing ([6d339b6](https://github.com/elcoosp/takumi-motion/commit/6d339b657450e7617e976dced11bc2cd58e32908))
+* trigger release-please for OIDC publish fix ([fc67032](https://github.com/elcoosp/takumi-motion/commit/fc6703282600c89e1abd8880fcbeb0d8cd67cff2))
+
 ## [1.0.5](https://github.com/elcoosp/takumi-motion/compare/v1.0.4...v1.0.5) (2026-11-11)
 
 

@@ -105,5 +105,6 @@
   "publishConfig": {
     "access": "public",
     "provenance": true
-  }
+  },
+  "packageManager": "pnpm@12.16.1"
 }

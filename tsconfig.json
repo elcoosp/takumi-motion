@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "bundler",
     "lib": [
       "ES2022",
       "DOM"
@@ -18,10 +18,11 @@
     "types": [
       "node"
     ],
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "allowSyntheticDefaultImports": true
   },
   "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx"
+    "src*.ts",
+    "src*.tsx"
   ]
 }

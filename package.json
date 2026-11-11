@@ -1,7 +1,7 @@
 {
   "name": "takumi-motion",
   "version": "1.0.0",
-  "description": "Deterministic server-side animation engine: React or HTML \u2192 GIF/WebP/APNG/PNG-sequence/sprite-sheet/still at any surface, rendered by Rust (takumi). v1.0 Velocity: solver/tween/compile/evaluate memoization, binary-search chunk index, zero-copy GIF passes, min-SAD PNG filtering (\u221290%+ atlas bytes), worker-pool parallel capture via bannerModule, frame-seeded determinism shim, esbuild TS loader for JSX banners.",
+  "description": "Deterministic server-side animation engine: React or HTML → GIF/WebP/APNG/PNG-sequence/sprite-sheet/still at any surface, rendered by Rust (takumi). v1.0 Velocity: solver/tween/compile/evaluate memoization, binary-search chunk index, zero-copy GIF passes, min-SAD PNG filtering (−90%+ atlas bytes), worker-pool parallel capture via bannerModule, frame-seeded determinism shim, esbuild TS loader for JSX banners.",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -23,7 +23,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsdown",
     "test": "vitest run",
     "example": "tsx examples/react-banner.tsx",
     "example:banners": "tsx examples/readme-banner.ts",
@@ -32,7 +32,9 @@
     "smoke": "node smoke.mjs",
     "proof:v04": "tsx scripts/proof-v04.mts",
     "proof:v05": "tsx scripts/proof-v05.mts",
-    "proof:v06": "tsx scripts/proof-v06.mts"
+    "proof:v06": "tsx scripts/proof-v06.mts",
+    "build:tsc": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "takumi",
@@ -81,8 +83,26 @@
     "@vitest/coverage-v8": "^3.2.4",
     "motion": "^14.6.0",
     "takumi-js": "^2.17.1",
+    "tsdown": "^0.23.7",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/elcoosp/takumi-motion.git"
+  },
+  "homepage": "https://github.com/elcoosp/takumi-motion#readme",
+  "bugs": {
+    "url": "https://github.com/elcoosp/takumi-motion/issues"
+  },
+  "author": "elcoosp",
+  "engines": {
+    "node": ">=22"
+  },
+  "prepublishOnly": "npm run build && npm test",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   }
 }

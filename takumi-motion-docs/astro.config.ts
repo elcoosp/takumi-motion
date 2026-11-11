@@ -5,6 +5,7 @@ import headingBadges from 'starlight-heading-badges';
 
 
 export default await defineDocsConfig({
+  llmsTxt: {},
   site: 'https://takumi-motion.vercel.app',
   domain: 'takumi-motion.vercel.app',
   title: "Takumi Motion",

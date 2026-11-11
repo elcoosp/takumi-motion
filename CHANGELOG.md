@@ -1,5 +1,12 @@
 # takumi-motion — CHANGELOG
 
+## [1.0.4](https://github.com/elcoosp/takumi-motion/compare/v1.0.3...v1.0.4) (2026-11-11)
+
+
+### Bug Fixes
+
+* **ci:** remove pnpm version pin and upgrade release-please to v5 ([31fb18f](https://github.com/elcoosp/takumi-motion/commit/31fb18f93e4af8a3e8559db80188d2ad3848766e))
+
 ## [1.0.3](https://github.com/elcoosp/takumi-motion/compare/v1.0.2...v1.0.3) (2026-11-11)
 
 

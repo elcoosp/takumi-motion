@@ -1,6 +1,6 @@
 {
   "name": "takumi-motion",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Deterministic server-side animation engine: React or HTML → GIF/WebP/APNG/PNG-sequence/sprite-sheet/still at any surface, rendered by Rust (takumi). v1.0 Velocity: solver/tween/compile/evaluate memoization, binary-search chunk index, zero-copy GIF passes, min-SAD PNG filtering (−90%+ atlas bytes), worker-pool parallel capture via bannerModule, frame-seeded determinism shim, esbuild TS loader for JSX banners.",
   "license": "MIT",
   "type": "module",

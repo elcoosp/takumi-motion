@@ -23,6 +23,9 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
   publish-npm:
+    permissions:
+      contents: read
+      id-token: write
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-24.04
@@ -37,7 +40,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
       - run: pnpm test
-      - name: Publish to npm
+
+      - name: Upgrade npm for OIDC
+        run: npm install -g npm@^11.5.1
+
+      - name: Publish to npm via OIDC
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ""

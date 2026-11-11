@@ -1,5 +1,12 @@
 # takumi-motion — CHANGELOG
 
+## [1.0.3](https://github.com/elcoosp/takumi-motion/compare/v1.0.2...v1.0.3) (2026-11-11)
+
+
+### Bug Fixes
+
+* trigger release-please to publish patch ([210cb51](https://github.com/elcoosp/takumi-motion/commit/210cb51433e68e9fa46148cdf82caf26654dab19))
+
 ## [1.0.2](https://github.com/elcoosp/takumi-motion/compare/v1.0.1...v1.0.2) (2026-11-11)
 
 

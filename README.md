@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/logo.png" alt="Takumi Motion Logo" width="200"/>
+  <img src="https://cdn.jsdelivr.net/gh/elcoosp/takumi-motion@main/docs/logo.png" alt="Takumi Motion Logo" width="200"/>
   <p>
     <strong>Deterministic server-side animation engine: any React component or raw HTML string → GIF/WebP/APNG/PNG-sequence/sprite-sheet/still at any user-given surface, rendered by Rust (takumi).</strong><br/>
     v1.0 <em>Velocity</em> — the performance pass: solver/tween/compile/evaluate memoization (geomean <strong>1.71×</strong>), binary-search chunk indexing, zero-copy GIF passes, min-SAD PNG filtering (<strong>−90%+</strong> atlas bytes), and worker-pool parallel capture — byte-identical at any worker count.

@@ -1,14 +1,5 @@
 import { defineConfig } from 'tsdown';
 
-// Entry map matches package.json "exports":
-//   .           → dist/index.js
-//   ./react     → dist/react/index.js
-//   ./audit     → dist/with-audit.js
-//   ./fonts     → dist/fonts.js
-//   ./recipes   → dist/templates/index.js
-//   ./kit       → dist/react/kit.js
-//
-// NOTE: ./kit source is src/kit.ts (not src/react/kit.ts).
 export default defineConfig({
   entry: {
     index: 'src/index.ts',
@@ -24,8 +15,8 @@ export default defineConfig({
   dts: true,
   sourcemap: true,
   clean: true,
-  // tsdown 0.21+: external → deps.neverBundle
-  // https://tsdown.dev/options/dependencies
+  // Force .js/.d.ts extensions so they match package.json "exports"
+  outExtensions: () => ({ js: '.js', dts: '.d.ts' }),
   deps: {
     neverBundle: [
       'react',

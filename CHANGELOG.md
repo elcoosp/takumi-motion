@@ -1,5 +1,13 @@
 # takumi-motion — CHANGELOG
 
+## [1.1.0](https://github.com/elcoosp/takumi-motion/compare/v1.0.6...v1.1.0) (2026-11-11)
+
+
+### Features
+
+* **docs:** enable state-of-the-art llms.txt generation ([912b7e2](https://github.com/elcoosp/takumi-motion/commit/912b7e2cab50a845405c3ccaae3963e7f8dbef86))
+* **docs:** homogenize with fleet (toolkit bump, changelog, native llms) ([521999a](https://github.com/elcoosp/takumi-motion/commit/521999aa6c48251230a2bf3b7476c47cc68f196a))
+
 ## [1.0.6](https://github.com/elcoosp/takumi-motion/compare/v1.0.5...v1.0.6) (2026-11-11)
 
 

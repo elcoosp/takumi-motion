@@ -1,5 +1,12 @@
 # takumi-motion — CHANGELOG
 
+## [1.0.2](https://github.com/elcoosp/takumi-motion/compare/v1.0.1...v1.0.2) (2026-11-11)
+
+
+### Bug Fixes
+
+* **ci:** remove stale changelog.yml ([d709f45](https://github.com/elcoosp/takumi-motion/commit/d709f451b07bece95dcf39b817b09ab80a39c444))
+
 ## [1.0.1](https://github.com/elcoosp/takumi-motion/compare/v1.0.0...v1.0.1) (2026-11-11)
 
 

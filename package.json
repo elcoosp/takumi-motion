@@ -34,7 +34,8 @@
     "proof:v05": "tsx scripts/proof-v05.mts",
     "proof:v06": "tsx scripts/proof-v06.mts",
     "build:tsc": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build"
   },
   "keywords": [
     "takumi",

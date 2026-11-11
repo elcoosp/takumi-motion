@@ -3,15 +3,13 @@
   "type": "module",
   "version": "1.0.0",
   "private": true,
-  "description": "Official documentation site for takumi-motion — deterministic server-side animation engine — built with Astro Starlight.",
+  "description": "Official documentation site for takumi-motion \u2014 deterministic server-side animation engine \u2014 built with Astro Starlight.",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
     "check": "astro check",
-    "lint": "markdownlint-cli2 \"src/content/docs/**/*.{md,mdx}\"",
-    "llms": "node scripts/build-llms.mjs",
-    "prebuild": "node scripts/build-llms.mjs"
+    "lint": "markdownlint-cli2 \"src/content/docs/**/*.{md,mdx}\""
   },
   "dependencies": {
     "@astrojs/starlight": "^0.42.10",
@@ -31,19 +29,10 @@
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "typescript": "6.0.3",
-    "@elcoosp/docs-toolkit": "github:elcoosp/docs-toolkit#8084231ffe3841ce1f199644aeb0c0af71b137bb"
+    "@elcoosp/docs-toolkit": "github:elcoosp/docs-toolkit#3464b8bf304b5030d25ae72328c2fe3863ffd881"
   },
   "engines": {
     "node": ">=22.23.4"
   },
-  "packageManager": "pnpm@12.16.1",
-  "pnpm": {
-    "overrides": {
-      "@emnapi/runtime": "1.11.1"
-    },
-    "onlyBuiltDependencies": [
-      "esbuild",
-      "sharp"
-    ]
-  }
+  "packageManager": "pnpm@12.16.1"
 }

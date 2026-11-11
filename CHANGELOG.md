@@ -1,5 +1,12 @@
 # takumi-motion — CHANGELOG
 
+## [1.0.1](https://github.com/elcoosp/takumi-motion/compare/v1.0.0...v1.0.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **ci:** add packages field to pnpm-workspace.yaml ([815d22c](https://github.com/elcoosp/takumi-motion/commit/815d22c3e1b454da16ecd22b91f774ea255c3837))
+
 ## 1.0.0 (2026-11-11)
 
 

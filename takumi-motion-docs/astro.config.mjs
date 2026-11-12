@@ -54,7 +54,7 @@ export default await defineDocsConfig({
             { label: 'Hooks & Motion Math', translations: { fr: "Hooks et mathématiques du mouvement" }, slug: 'reference/hooks' },
             { label: 'Core Engine API', translations: { fr: "API du moteur principal" }, slug: 'reference/core-engine' },
             { label: 'Renderers & Reports', translations: { fr: "Moteurs de rendu et rapports" }, slug: 'reference/renderers' },
-            { label: 'Presets, translations: { fr: "Préréglages, thèmes et polices" }, Themes & Fonts', slug: 'reference/presets-and-themes' },
+            { label: 'Presets, Themes & Fonts', translations: { fr: "Préréglages, thèmes et polices" }, slug: 'reference/presets-and-themes' },
             { label: 'Lint Codes', translations: { fr: "Codes de lint" }, slug: 'reference/lint-codes' },
             { label: 'Package Exports', translations: { fr: "Exports du paquet" }, slug: 'reference/package-exports' },
           ]

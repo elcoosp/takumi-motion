@@ -33,41 +33,41 @@ export default await defineDocsConfig({
         {
           label: 'Tutorials', translations: { fr: 'Tutoriels' },
           items: [
-            { label: 'Your First Banner', slug: 'tutorials/first-banner' },
-            { label: 'Declarative Banners', slug: 'tutorials/declarative-banners' },
+            { label: 'Your First Banner', translations: { fr: "Votre première bannière" }, slug: 'tutorials/first-banner' },
+            { label: 'Declarative Banners', translations: { fr: "Bannières déclaratives" }, slug: 'tutorials/declarative-banners' },
           ]
         },
         {
           label: 'How-to Guides', translations: { fr: 'Guides pratiques' },
           items: [
-            { label: 'Data-Driven Animations', slug: 'guides/data-driven-animations' },
-            { label: 'Seamless Loops', slug: 'guides/seamless-loops' },
-            { label: 'CI Quality Gates', slug: 'guides/ci-quality-gates' },
-            { label: 'Reduce File Size', slug: 'guides/reduce-file-size' },
-            { label: 'Render Raw HTML', slug: 'guides/render-from-raw-html' },
-            { label: 'Parallel Capture', slug: 'guides/parallel-capture' },
-            { label: 'Preview and Inspect', slug: 'guides/preview-and-inspect' },
+            { label: 'Data-Driven Animations', translations: { fr: "Animations pilotées par les données" }, slug: 'guides/data-driven-animations' },
+            { label: 'Seamless Loops', translations: { fr: "Boucles transparentes" }, slug: 'guides/seamless-loops' },
+            { label: 'CI Quality Gates', translations: { fr: "Portes de qualité CI" }, slug: 'guides/ci-quality-gates' },
+            { label: 'Reduce File Size', translations: { fr: "Réduire la taille du fichier" }, slug: 'guides/reduce-file-size' },
+            { label: 'Render Raw HTML', translations: { fr: "Rendre le HTML brut" }, slug: 'guides/render-from-raw-html' },
+            { label: 'Parallel Capture', translations: { fr: "Capture parallèle" }, slug: 'guides/parallel-capture' },
+            { label: 'Preview and Inspect', translations: { fr: "Aperçu et inspection" }, slug: 'guides/preview-and-inspect' },
           ]
         },
         {
           label: 'Reference', translations: { fr: 'Référence' },
           items: [
-            { label: 'CLI', slug: 'reference/cli' },
-            { label: 'React Components', slug: 'reference/react-components' },
-            { label: 'Hooks & Motion Math', slug: 'reference/hooks' },
-            { label: 'Core Engine API', slug: 'reference/core-engine' },
-            { label: 'Renderers & Reports', slug: 'reference/renderers' },
-            { label: 'Presets, Themes & Fonts', slug: 'reference/presets-and-themes' },
-            { label: 'Lint Codes', slug: 'reference/lint-codes' },
-            { label: 'Package Exports', slug: 'reference/package-exports' },
+            { label: 'CLI', translations: { fr: "CLI" }, slug: 'reference/cli' },
+            { label: 'React Components', translations: { fr: "Composants React" }, slug: 'reference/react-components' },
+            { label: 'Hooks & Motion Math', translations: { fr: "Hooks et mathématiques du mouvement" }, slug: 'reference/hooks' },
+            { label: 'Core Engine API', translations: { fr: "API du moteur principal" }, slug: 'reference/core-engine' },
+            { label: 'Renderers & Reports', translations: { fr: "Moteurs de rendu et rapports" }, slug: 'reference/renderers' },
+            { label: 'Presets, translations: { fr: "Préréglages, thèmes et polices" }, Themes & Fonts', slug: 'reference/presets-and-themes' },
+            { label: 'Lint Codes', translations: { fr: "Codes de lint" }, slug: 'reference/lint-codes' },
+            { label: 'Package Exports', translations: { fr: "Exports du paquet" }, slug: 'reference/package-exports' },
           ]
         },
         {
-          label: 'Concepts',
+          label: 'Concepts', translations: { fr: "Concepts" },
           items: [
-            { label: 'Architecture', slug: 'explanation/architecture' },
-            { label: 'Determinism', slug: 'explanation/determinism' },
-            { label: 'Performance & Size', slug: 'explanation/performance-and-size' },
+            { label: 'Architecture', translations: { fr: "Architecture" }, slug: 'explanation/architecture' },
+            { label: 'Determinism', translations: { fr: "Déterminisme" }, slug: 'explanation/determinism' },
+            { label: 'Performance & Size', translations: { fr: "Performances et taille" }, slug: 'explanation/performance-and-size' },
           ]
         },
       ]

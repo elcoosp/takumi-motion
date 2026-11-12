@@ -1,4 +1,5 @@
 import { defineDocsConfig } from '@elcoosp/docs-toolkit/config';
+import starlightChangelogs from 'starlight-changelogs';
 import linksValidator from 'starlight-links-validator';
 import imageZoom from 'starlight-image-zoom';
 import headingBadges from 'starlight-heading-badges';
@@ -27,7 +28,7 @@ export default await defineDocsConfig({
       // Zero-config, index-at-build search. Kept per ADR 0003 (no DocSearch app).
       // pagefind is enabled by default; the key below documents the decision.
       pagefind: true,
-      plugins: [linksValidator(), imageZoom(), headingBadges()],
+      plugins: [ starlightChangelogs(), linksValidator(), imageZoom(), headingBadges()],
       lastUpdated: true,
       sidebar: [
         {

@@ -19,7 +19,7 @@ export default await defineDocsConfig({
         'Deterministic server-side animation engine: any React component or raw HTML string becomes a GIF, WebP, APNG, PNG sequence, sprite sheet, or still — rendered by the Rust takumi engine, byte-identical on every run.',
       favicon: '/favicon.png',
       social: [
-        { icon: 'github', label: 'GitHub', href: 'https://github.com/elcoosp/takumi-motion' },
+        { icon: 'github', label: 'GitHub', translations: { fr: "GitHub" }, href: 'https://github.com/elcoosp/takumi-motion' },
       ],
       editLink: {
         baseUrl: 'https://github.com/elcoosp/takumi-motion/edit/main/'

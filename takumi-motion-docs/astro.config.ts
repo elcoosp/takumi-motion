@@ -2,8 +2,6 @@ import { defineDocsConfig } from '@elcoosp/docs-toolkit/config';
 import linksValidator from 'starlight-links-validator';
 import imageZoom from 'starlight-image-zoom';
 import headingBadges from 'starlight-heading-badges';
-
-
 export default await defineDocsConfig({
   changelog: { repo: 'elcoosp/takumi-motion' },
   llmsTxt: {},
@@ -30,13 +28,6 @@ export default await defineDocsConfig({
       // pagefind is enabled by default; the key below documents the decision.
       pagefind: true,
       plugins: [linksValidator(), imageZoom(), headingBadges()],
-      // Multilingual-ready: the default locale is served from the site root
-      // (Starlight's documented `root` locale pattern). Add further locales as
-      // sibling keys plus `src/content/docs/<locale>/` folders — no other change.
-      defaultLocale: 'root',
-      locales: {
-        root: { label: 'English', lang: 'en' }
-      },
       lastUpdated: true,
       sidebar: [
         {

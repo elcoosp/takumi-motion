@@ -31,14 +31,14 @@ export default await defineDocsConfig({
       lastUpdated: true,
       sidebar: [
         {
-          label: 'Tutorials',
+          label: 'Tutorials', translations: { fr: 'Tutoriels' },
           items: [
             { label: 'Your First Banner', slug: 'tutorials/first-banner' },
             { label: 'Declarative Banners', slug: 'tutorials/declarative-banners' },
           ]
         },
         {
-          label: 'How-to Guides',
+          label: 'How-to Guides', translations: { fr: 'Guides pratiques' },
           items: [
             { label: 'Data-Driven Animations', slug: 'guides/data-driven-animations' },
             { label: 'Seamless Loops', slug: 'guides/seamless-loops' },
@@ -50,7 +50,7 @@ export default await defineDocsConfig({
           ]
         },
         {
-          label: 'Reference',
+          label: 'Reference', translations: { fr: 'Référence' },
           items: [
             { label: 'CLI', slug: 'reference/cli' },
             { label: 'React Components', slug: 'reference/react-components' },

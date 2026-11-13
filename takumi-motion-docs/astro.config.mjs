@@ -28,14 +28,14 @@ export default await defineDocsConfig({
       lastUpdated: true,
       sidebar: [
         {
-          label: 'Tutorials', translations: { fr: 'Tutoriels' },
+          label: 'Tutorials',
           items: [
             { label: 'Your First Banner', translations: { fr: "Votre première bannière" }, slug: 'tutorials/first-banner' },
             { label: 'Declarative Banners', translations: { fr: "Bannières déclaratives" }, slug: 'tutorials/declarative-banners' },
           ]
         },
         {
-          label: 'How-to Guides', translations: { fr: 'Guides pratiques' },
+          label: 'How-to Guides',
           items: [
             { label: 'Data-Driven Animations', translations: { fr: "Animations pilotées par les données" }, slug: 'guides/data-driven-animations' },
             { label: 'Seamless Loops', translations: { fr: "Boucles transparentes" }, slug: 'guides/seamless-loops' },
@@ -47,9 +47,9 @@ export default await defineDocsConfig({
           ]
         },
         {
-          label: 'Reference', translations: { fr: 'Référence' },
+          label: 'Reference',
           items: [
-            { label: 'CLI', translations: { fr: "CLI" }, slug: 'reference/cli' },
+            { label: 'CLI', slug: 'reference/cli' },
             { label: 'React Components', translations: { fr: "Composants React" }, slug: 'reference/react-components' },
             { label: 'Hooks & Motion Math', translations: { fr: "Hooks et mathématiques du mouvement" }, slug: 'reference/hooks' },
             { label: 'Core Engine API', translations: { fr: "API du moteur principal" }, slug: 'reference/core-engine' },
@@ -60,9 +60,9 @@ export default await defineDocsConfig({
           ]
         },
         {
-          label: 'Concepts', translations: { fr: "Concepts" },
+          label: 'Concepts',
           items: [
-            { label: 'Architecture', translations: { fr: "Architecture" }, slug: 'explanation/architecture' },
+            { label: 'Architecture', slug: 'explanation/architecture' },
             { label: 'Determinism', translations: { fr: "Déterminisme" }, slug: 'explanation/determinism' },
             { label: 'Performance & Size', translations: { fr: "Performances et taille" }, slug: 'explanation/performance-and-size' },
           ]

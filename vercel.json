@@ -1,0 +1,4 @@
+{
+  "rootDirectory": "takumi-motion-docs",
+  "installCommand": "npm i -g pnpm@11.24.0 && pnpm install"
+}

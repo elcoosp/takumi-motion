@@ -1,0 +1,136 @@
+---
+title: Votre première bannière
+description: "Installez takumi-motion, définissez une bannière React, et rendez-la en WebP déterministe en une séance."
+type: tutorial
+---
+
+import { Aside, Code, LinkCard, Steps, TabItem, Tabs } from '@astrojs/starlight/components';
+
+Dans ce tutoriel vous construisez et rendez une bannière React — le chemin doré pour produire un badge README animé ou une carte OG. Vous installez le paquet, définissez des scènes, rendez côté serveur en WebP, et lisez le rapport de rendu. La visite entière prend environ quinze minutes.
+
+## Prérequis
+
+- Node.js 22 ou plus récent
+- pnpm 10 ou plus récent
+- Familiarité de base avec les composants de fonction React
+
+## 1. Créer un projet et installer
+
+Créez un répertoire vide et initialisez un paquet :
+
+<Code lang="sh" code={`mkdir my-banner && cd my-banner
+pnpm init`} />
+
+Installez `takumi-motion` :
+
+<Tabs>
+  <TabItem label="pnpm">
+<Code lang="sh" code={` pnpm add takumi-motion`} />
+  </TabItem>
+  <TabItem label="npm">
+<Code lang="sh" code={` npm add takumi-motion`} />
+  </TabItem>
+  <TabItem label="yarn">
+<Code lang="sh" code={` yarn add takumi-motion`} />
+  </TabItem>
+</Tabs>
+
+<Aside type="note">
+  Le paquet livre son propre chemin d'exécution TypeScript (`tsx`), donc vous n'avez besoin ni de bundler ni de config de build pour rendre des bannières depuis des fichiers `.tsx`.
+</Aside>
+
+## 2. Définir une bannière
+
+Une bannière est un composant React enveloppé dans `defineBanner`. À l'intérieur, un élément `<Banner>` déclare la surface et le thème, et les éléments `<Scene>` déclarent ce qui joue et pour combien de temps. Les unités de durée sont des **frames**, pas des secondes.
+
+Créez un fichier nommé `launch-banner.tsx` :
+
+<Code lang="tsx" code={`import { defineBanner, Banner, Scene, Layer } from "takumi-motion/react";
+import { renderReactBanner } from "takumi-motion";
+
+export const launchBanner = defineBanner(function TakumiMotionLaunch() {
+        return (
+    <Banner preset="readme" theme="tokyo-night" transitionMs={250}>
+            <Layer bottom>
+                    <div
+                            style={{
+                                    position: "absolute",
+                                    bottom: 0,
+                                    width: 850,
+                                    height: 3,
+                                    backgroundColor: "#7aa2f7",
+                            }}
+                    />
+            </Layer>
+
+            <Scene duration={100} enter="rise" exit="crossfade">
+                    <h1 style={{ fontSize: 48, fontWeight: 700, color: "#c0caf5" }}>
+                            takumi-motion
+                    </h1>
+            </Scene>
+    </Banner>
+        );
+});
+
+const report = await renderReactBanner({
+        banner: launchBanner,
+        formats: ["webp"],
+        outDir: "./out",
+});
+
+console.log(report.lint);`} />
+
+<Aside type="caution">
+  Passez `formats` (un tableau) et `outDir` (un répertoire), pas `format` ni un chemin de fichier. Le renderer choisit les noms de fichiers depuis le preset et le base name.
+</Aside>
+
+Trois détails portent la conception :
+
+- `preset="readme"` sélectionne la surface 850×200 @ 20 fps avec un budget de 2 Mio (voir [Presets, thèmes et polices](/reference/presets-and-themes)).
+- `<Scene duration={100}>` signifie 100 frames — cinq secondes au fps 20 du preset.
+- `<Layer bottom>` garde la règle accent épinglée sous le texte animé.
+
+## 3. Le rendre
+
+Exécutez le fichier avec Node :
+
+<Code lang="sh" code={`node launch-banner.tsx`} />
+
+La commande imprime un rapport et écrit `./out/launch-banner.webp` :
+
+<Code lang="json" code={`{
+  "format": "webp",
+  "bytes": 184320,
+  "withinBudget": true
+}`} />
+
+Ouvrez le fichier dans un navigateur — vous voyez le titre monter, tenir, et sortir en crossfade. Les mêmes octets rendent sur chaque machine et à chaque run.
+
+## 4. Lire le rapport
+
+`renderReactBanner` renvoie un `ReactBannerReport`. Les champs que vous atteignez le plus souvent :
+
+| Champ | Signification |
+| --- | --- |
+| `files` | Sorties écrites ou bufferisées : chemin, format, nombre d'octets, verdict de budget par fichier |
+| `lint` | Avertissements d'authoring codés (`TM_*`), dédupliqués, avec hints de correctif |
+| `seam` | Verdict de jointure de boucle (`mode: "exact"` quand la frame 0 égale la frame finale) |
+| `timings` | Millisecondes passées dans les étages de capture, parse, audit et encodage |
+
+Un `report.lint` non vide ne fait pas échouer le rendu. Il vous dit ce qui coûtera des octets ou cassera le layout — par exemple `TM_KEBAB_STYLE` quand un objet de style utilise des clés en kebab-case que le moteur rejette. Voir [Codes de lint](/reference/lint-codes) pour la table complète.
+
+## 5. Essayer la CLI
+
+La même bannière rend depuis le terminal sans écrire un script driver :
+
+<Code lang="sh" code={`npx takumi-motion render launch-banner.tsx --out ./out`} />
+
+La CLI accepte `--format gif,webp`, `--budget 800000`, `--filmstrip`, et plus — chaque drapeau est documenté dans la [référence CLI](/reference/cli).
+
+## Étapes suivantes
+
+<LinkCard title="Bannières déclaratives" href="/tutorials/declarative-banners" description="Rendez des recettes de bannière sans écrire de composants React." />
+
+<LinkCard title="Portails de qualité CI" href="/guides/ci-quality-gates" description="Faites échouer le build sur les shifts de layout, les ruptures de jointure ou les budgets d'octets." />
+
+<LinkCard title="Composants React" href="/reference/react-components" description="Chaque composant et prop du runtime, avec défauts." />

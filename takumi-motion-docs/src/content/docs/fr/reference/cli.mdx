@@ -1,0 +1,99 @@
+---
+title: CLI
+description: "Chaque commande et drapeau takumi-motion — render, check, preview, storyboard, init, templates, presets, fonts."
+type: reference
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Le binaire `takumi-motion` est livré avec le paquet (`pnpm exec takumi-motion`, `npx takumi-motion`, ou `node_modules/.bin/takumi-motion`). Le lancer sans argument imprime l'usage et sort avec le code 1.
+
+## Commandes
+
+| Commande | Objet |
+| --- | --- |
+| `render <file>` | Rend un module de bannière TS/TSX/JS ou un fichier `.html` en GIF/WebP/APNG, posters, stills, séquences ou sprite sheets |
+| `check <file>` | Audit d'extents + jointure de boucle + sonde de taille optionnelle — le portail CI (sortie 0 passe, 1 échoue) |
+| `preview <file>` | Écrit un player HTML autonome du CSS capturé |
+| `storyboard <file.tsx>` | Planche contact PNG étiquetée de la timeline (bannières React) |
+| `init [dir]` | Échafaude un `banner.ts` (ou `banner.tsx` avec `--react`) et un `tsconfig.json` ; refuse quand un fichier de bannière existe déjà |
+| `templates` | Liste les recettes intégrées (`typewriter`, `countup`, `sweep`, `cascade`) |
+| `presets` | Liste les presets avec taille, fps, formats et budget |
+| `fonts` | Liste le catalogue Google Fonts curé par rôle |
+
+## Formes de module que `render` accepte
+
+Le loader résout chaque candidat comme `mod.default ?? mod.banner ?? mod.element`, puis route par forme :
+
+| Forme | Route |
+| --- | --- |
+| Élément React (a `$$typeof`) | Runtime React |
+| Fonction marquée `defineBanner()` | Runtime React |
+| Fonction sync/async simple | Appelée et attendue ; résultat routé en react ou déclaratif par forme (force react avec `--react`) |
+| `{ timeline, element \| node, fonts? }` | Chemin déclaratif |
+| Fichier `.html` / `.htm` | Chemin HTML brut (à associer avec `--css`, `--font-file`) |
+
+## Drapeaux
+
+### Surface
+
+| Drapeau | Défaut | Signification |
+| --- | --- | --- |
+| `--preset <name>` | `readme` | Recette de preset ; les drapeaux explicites de surface gagnent sur elle |
+| `--width`, `--height` | preset | Taille logique du canvas en px |
+| `--dpr <n>` | preset | Device pixel ratio (plafond de surface : 8192 px, dpr ≤ 8) |
+| `--background <color>` | thème | Couleur CSS ou `transparent` pour un canvas alpha |
+| `--fps <n>` | preset | fps d'échantillonnage et d'encodage |
+
+### Sortie
+
+| Drapeau | Défaut | Signification |
+| --- | --- | --- |
+| `--out`, `-o <dir>` | `./out` | Répertoire de sortie (`preview` honore un chemin `.html`) |
+| `--format <list>` | preset | Séparés par virgules : `gif,webp,apng` |
+| `--quality <0-100>` | preset | Qualité WebP (mutuellement exclusif avec `--lossless`) |
+| `--lossless` | false | WebP sans perte |
+| `--no-poster` | false | Sauter le poster PNG |
+| `--still [frame]` | false | PNG mono-frame au lieu d'une animation (frame par défaut : reposée ~60 %) |
+| `--sequence` | false | Séquence de frames PNG + manifeste `frames.json` |
+| `--spritesheet` | false | Atlas sprite PNG + JSON de métadonnées |
+| `--sprite-columns <n>` | `ceil(√n)` | Colonnes de l'atlas |
+| `--sprite-every <n>` | 1 | Pas de frames dans l'atlas |
+| `--filmstrip [n\|f1,f2,…]` | false | Planche contact exacte au moteur à côté des sorties |
+| `--preview` | false | Écrit aussi `banner-preview.html` |
+| `--json` | false | Rapport complet en JSON (buffers rendus comme `<n bytes>`) |
+| `--quiet`, `-q` | false | Supprime le rapport |
+
+### Budget, données et exécution
+
+| Drapeau | Défaut | Signification |
+| --- | --- | --- |
+| `--budget <bytes>` | unset | Verdict de budget ; déclenche l'échelle fps (100 % → 75 % → 50 %, plancher 6 fps) ; sortie 2 quand au-dessus |
+| `--data <file>` | – | Canal de données JSON, lu une fois au setup |
+| `--font-file <path>` | `[]` | TTF/OTF local à enregistrer (répétable ; famille = racine du fichier) |
+| `--concurrency <n>` | cœurs, cap 8 | Parallélisme borné pour les étages parse/mesure/frame |
+| `--workers <n\|auto>` | unset (1) | Threads workers pour l'étage de capture (bannières module seulement) |
+| `--from <n>` / `--to <n>` | 0 / tous | Fenêtre de frames de sortie `[from, to)` (chemin React) |
+| `--react` | false | Force le runtime React pour les exports de fonction non marqués |
+| `--kit` | false | Set d'assets déclaratifs complet (`readme`, `readme-hd`, `readme-lean` + twin statique) |
+| `--explain` | false | X-ray d'attribution de canal par frame (chemin React) |
+| `--duration <frames>` | 30 | Frames pour le chemin HTML |
+| `--css <file>` | – | Feuille de style pour le chemin HTML |
+
+## Codes de sortie
+
+| Code | Levé par | Signification |
+| --- | --- | --- |
+| `0` | toutes les commandes | Succès (`check` : « OK — ship it ») |
+| `1` | toutes les commandes | Erreur ou audit échoué (`check` : « FAILED — do not ship ») |
+| `2` | `render --budget`, `--kit` | La sortie a dépassé le budget d'octets après l'échelle |
+
+<Aside type="note">
+  `check` imprime les trouvailles d'extents par frame (warn pour le débordement décoratif, FAIL pour le contenu), le verdict de jointure et les avertissements de lint — les mêmes données que le rapport JSON porte.
+</Aside>
+
+## Étapes suivantes
+
+<LinkCard title="Portails de qualité CI" href="/guides/ci-quality-gates" description="Un job GitHub Actions prêt à l'emploi utilisant check et les budgets." />
+
+<LinkCard title="Renderers et rapports" href="/reference/renderers" description="Les équivalents programmatiques de chaque drapeau." />

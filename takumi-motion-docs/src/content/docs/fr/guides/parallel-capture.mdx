@@ -1,0 +1,66 @@
+---
+title: Capture parallèle
+description: "Accélérez les bannières lourdes avec la capture par pool de workers — sortie octet-identique à n'importe quel nombre de workers."
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+La capture de frames est embarrassingly parallel — chaque frame est une fonction pure de `(frame, props)` — donc les bannières lourdes rendent à travers des threads workers. Utilisez ce guide quand la capture domine votre temps de rendu (grands canvas, centaines de frames, arbres profonds).
+
+## Basculer en mode module
+
+La capture parallèle exige que la bannière soit adressable comme module, parce que chaque worker l'importe indépendamment. Passez `bannerModule` au lieu de `banner` :
+
+<Code lang="ts" code={`import { renderReactBanner } from "takumi-motion";
+
+const report = await renderReactBanner({
+    bannerModule: "./launch-banner.tsx", // l'export par défaut du fichier
+    workers: "auto",
+    formats: ["webp"],
+    outDir: "./out",
+});`} />
+
+L'export par défaut du chemin de module peut être un élément React, un composant `defineBanner`, ou une fonction renvoyant l'un ou l'autre. L'équivalent CLI est `--workers auto` (bannières module seulement).
+
+## Laisser la barrière auto décider
+
+`workers: "auto"` refuse de spawner sauf si l'hôte en bénéficie réellement :
+
+| Condition | Seuil |
+| --- | --- |
+| Cœurs disponibles | ≥ 4 |
+| Longueur de la bannière | ≥ 128 frames |
+| Travail de capture mesuré | ≥ 400 ms (chronométré par sonde) |
+
+Le thread principal sonde une fois — deux rendus statiques établissent le plan et le coût par frame — et ne spawne ensuite qu'au plus 16 workers sur une grille de fenêtres. Sur les hôtes plus petits, les étages Rust saturent déjà la machine, et spawner des workers JS la sursouscrit ; la table de bench dans le dépôt enregistre un cas réel où `workers: 4` sur un hôte à 2 cœurs a mesuré 0,88× (plus lent). La barrière garde le série là.
+
+Un `workers: 4` numérique force le pool (plafonné à 16 et au nombre de frames) quand vous savez mieux que la barrière.
+
+<Aside type="tip">
+  L'identité octet tient à **n'importe quel** nombre de workers — les fenêtres se concatènent et se re-chunkent une fois, l'accord de plan est affirmé avant le merge, et le shim PRNG amorcé par frame rend le rendu de chaque frame une fonction pure de `(frame, props)`. Les tests dorés du dépôt affirment cet invariant ; vous pouvez l'affirmer aussi en diffant les sorties série et parallèle.
+</Aside>
+
+## Rendre des fenêtres de frames
+
+Déboguez une plage sans re-rendre tout :
+
+<Code lang="ts" code={`const report = await renderReactBanner({
+    bannerModule: "./reel.tsx",
+    fromFrame: 120,
+    toFrame: 180,
+});`} />
+
+La paire CLI est `--from 120 --to 180`. Le bloc `window` du rapport enregistre la plage qui a tourné.
+
+## Estimer avant de vous engager
+
+Le bloc `timings` du rapport sépare capture, parse, audit et encodage. Si `captureMs` est petit à côté de `encodeMs`, plus de workers n'aideront pas — passez à [Réduire la taille du fichier](/guides/reduce-file-size) à la place.
+
+## Étapes suivantes
+
+<LinkCard title="Déterminisme" href="/explanation/determinism" description="Comment le shim amorcé par frame garde les workers octet-exacts." />
+
+<LinkCard title="Renderers et rapports" href="/reference/renderers" description="Options de renderReactBanner et le bloc timings." />
+
+<LinkCard title="CLI" href="/reference/cli" description="Les drapeaux --workers, --from/--to et --concurrency." />

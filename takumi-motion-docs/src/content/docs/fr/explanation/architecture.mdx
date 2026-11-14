@@ -1,0 +1,72 @@
+---
+title: Architecture
+description: "Comment l'auteur, la capture, la compilation et le rasteriseur Rust s'articulent — de l'arbre React aux octets encodés."
+type: explanation
+---
+
+import { Aside, Code, FileTree, LinkCard } from '@astrojs/starlight/components';
+
+Takumi Motion est un pont entre deux mondes : l'authoring React de haut niveau (ou du HTML brut), et un rasteriseur Rust qui rend nativement des layouts de style CSS. Le pont est délibérément étroit — une timeline JSON, un arbre de markup statique par frame, et des millisecondes entières.
+
+## Le pipeline
+
+<Code lang="text" code={`AUTHOR    Les composants React ou templates produisent un arbre de nœuds + TimelineJSON
+PLAN      Les fenêtres de scènes, transitions et grilles de frames se résolvent en amont
+CAPTURE   Chaque frame rend en markup statique (fonction pure de l'index de frame)
+COMPILE   La timeline se cuit sur une grille fps partagée (keyframes CSS)
+RASTER    Le moteur Rust (takumi) rend le markup + styles en pixels
+ENCODE    Les encodeurs GIF / WebP / APNG émettent les fichiers ; le post-traitement tourne`} />
+
+Quatre propriétés tiennent partout :
+
+- **Déterminisme** — `Math.random` est amorcé par frame, le temps du moteur est en ms entières, et aucune lecture réseau ou d'horloge n'a lieu pendant le rendu. Même entrée, mêmes octets.
+- **Timelines ahead-of-time** — rien n'anime « en direct ». Le moteur échantillonne les pistes écrites aux indices de frame et fusionne les frames octet-identiques en chunks.
+- **Rasterisation Rust** — le moteur takumi (via `@takumi-rs/core`, un module natif précompilé) met en page et peint chaque frame ; aucun navigateur headless n'existe dans le pipeline.
+- **Le rapport est l'API** — chaque rendu renvoie ses fichiers, budgets, trouvailles de lint, verdict de jointure et timings comme données.
+
+## Cycle de capture en détail
+
+<Code lang="text" code={`PROBE    <Banner> enregistre les méta + entrées de scène (les enfants ne rendent pas encore)
+PLAN     planBanner() calcule les fenêtres de scènes exactes à la frame près
+PREWARM  la frame d'ouverture de chaque scène rend une fois (découverte FitText/Morph ;
+      les sorties sont jetées — les composants peuvent voir un rendu supplémentaire par scène)
+FRAMES   la boucle réelle par frame produit le markup qui sera encodé
+CHUNK    les frames adjacentes octet-identiques fusionnent
+LINT     les arbres de style + le markup + les trouvailles de registre assemblent report.lint`} />
+
+La passe de préchauffage est ce qui permet à `<FitText>` et `<Morph>` de mesurer à travers le vrai renderer et de rendre quand même synchroniquement dans la boucle de frames. Les sorties de préchauffage n'atteignent jamais l'encodeur.
+
+## Carte de la surface source
+
+<FileTree>
+- src/content/docs (pages du site)
+- takumi-motion (le paquet)
+  - index.ts — export racine : moteur + renderers + audit + kit
+  - react/ — primitives, hooks, runtime de capture, workers parallèles
+  - templates/ — les quatre recettes de bannière
+  - cli.ts — la surface terminal
+</FileTree>
+
+La surface publique du paquet se découpe par intention :
+
+| Préoccupation | Où elle vit |
+| --- | --- |
+| Authoring en React | `takumi-motion/react` |
+| Authoring sans React | `createTimeline` + `h` (racine) ou `takumi-motion/recipes` |
+| Rendu | `renderBanner`, `renderReactBanner`, `renderHtmlAnimation`, `renderStill`, exporteurs sprite/séquence |
+| Vérification | `renderWithAudit`, `checkBanner`, `auditExtents`, canal lint, `explainCapture` |
+| Terminal | le binaire `takumi-motion` |
+
+## Pourquoi pas un navigateur ?
+
+Un navigateur headless apporte du non-déterminisme (hinting de polices, minuteurs, courses de layout), un coût de démarrage lourd, et un plancher d'octets de sortie. Le moteur Rust rend le même sous-ensemble CSS nativement et vite — les benchmarks v1.0 enregistrent une bannière de 80 frames de bout en bout en ~37 ms, en série. L'échange est un ensemble de propriétés de style borné (`SUPPORTED_STYLE_PROPS`), que le système de types et le lint `TM_UNKNOWN_STYLE_PROP` rendent explicite.
+
+<Aside type="note">
+  Ce site de docs est lui-même une base de code séparée (Astro Starlight). Le dépôt que vous clonez contient le moteur ; le site est livré dans son propre archive avec son propre build.
+</Aside>
+
+## Étapes suivantes
+
+<LinkCard title="Déterminisme" href="/explanation/determinism" description="Le modèle de frame qui rend possible une sortie octet-exacte." />
+
+<LinkCard title="Performance et taille" href="/explanation/performance-and-size" description="Ce que la passe Velocity a changé et pourquoi ça compte." />

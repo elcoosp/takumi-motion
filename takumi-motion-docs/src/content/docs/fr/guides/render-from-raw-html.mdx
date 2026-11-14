@@ -1,0 +1,67 @@
+---
+title: Rendre du HTML brut
+description: "Transformez un fragment HTML simple avec du CSS en sorties déterministes GIF, WebP, APNG ou still — sans React."
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+Le moteur accepte du HTML brut comme source de première classe. Utilisez ce chemin quand l'animation existe déjà comme markup — un snippet de design system, un template généré, un pipeline sans JS — et que vous avez besoin des mêmes sorties déterministes que le chemin React produit.
+
+## Rendre une chaîne HTML
+
+<Code lang="ts" code={`import { renderHtmlAnimation } from "takumi-motion";
+
+const report = await renderHtmlAnimation({
+        html: \`<div id="badge"><h1>ship it</h1></div>\`,
+        css: \`
+    #badge { display: flex; align-items: center; height: 200px; }
+    h1 { opacity: 0; animation: rise 1.2s ease-out forwards; }
+    @keyframes rise { from { opacity: 0; transform: translateY(-24px); } to { opacity: 1; } }
+        \`,
+        frames: 30,
+        fps: 20,
+        width: 850,
+        height: 200,
+        outDir: "./out",
+});`} />
+
+`renderHtmlAnimation` extrait le `<body>` des documents complets (ou prend un fragment), remonte les blocs `<style>`, échantillonne `frames` poses déterministes des animations CSS, et encode les formats du preset. Le rapport porte `cssEntries`, `styleBlocksHoisted`, `files`, `posters`, `fonts` et les champs de budget.
+
+## Utiliser la CLI pour les fichiers
+
+La commande `render` accepte directement les fichiers `.html` et `.htm` :
+
+<Code lang="sh" code={`npx takumi-motion render badge.html --css badge.css --font-file Brand.ttf --frames 40 --out ./out`} />
+
+| Drapeau | Objet |
+| --- | --- |
+| `--css <file>` | Attache une feuille de style externe |
+| `--font-file <path>` | Enregistre un TTF/OTF local (répétable ; la famille vaut par défaut la racine du fichier) |
+| `--frames <n>` | Nombre de frames pour le chemin HTML (défaut 30) |
+| `--width` / `--height` / `--dpr` | Surcharges de surface |
+| `--format gif,webp,apng` | Formats de sortie |
+| `--budget <bytes>` | Budget d'octets avec code de sortie 2 en cas d'échec |
+
+## Garder le déterminisme intact
+
+- Évitez le JavaScript dans le HTML — le moteur rend le markup et le CSS, pas les scripts.
+- Les octets de police appartiennent au build : vendez les fichiers TTF/OTF localement (`--font-file`) au lieu d'URLs Google Fonts. Les polices distantes déclenchent le lint `TM_FONT_NETWORK` parce que le déterminisme d'octets ne tient que tant que les octets distants tiennent.
+- Les fichiers WOFF/WOFF2 sont rejetés — convertissez en TTF ou OTF d'abord.
+
+## Stills depuis du HTML
+
+`renderStill` accepte le même trio de sources — bannière react, html, ou nœud+timeline déclaratif :
+
+<Code lang="ts" code={`import { renderStill } from "takumi-motion";
+
+const still = await renderStill({ html: fragment, css, width: 1200, height: 630 });
+console.log(still.png.length); // octets PNG`} />
+
+## Étapes suivantes
+
+<LinkCard title="Renderers et rapports" href="/reference/renderers" description="Options de renderHtmlAnimation et forme complète du rapport." />
+
+<LinkCard title="Aperçu et inspection" href="/guides/preview-and-inspect" description="Filmstrips et storyboards pour les sources HTML et React." />
+
+<LinkCard title="Portails de qualité CI" href="/guides/ci-quality-gates" description="Verrouillez les rendus HTML avec les mêmes codes de sortie." />

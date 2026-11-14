@@ -1,0 +1,110 @@
+---
+title: Composants React
+description: "Props et défauts de chaque composant du runtime takumi-motion/react — Banner, Scene, Layer, charts, matériaux, particules et plus."
+type: reference
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Tous les composants s'importent depuis `takumi-motion/react` (le kit cinétique aussi depuis `takumi-motion/kit`). Chaque composant est une fonction pure de la frame courante — pas d'horloges, pas de `Math.random`.
+
+## Structure
+
+### `<Banner>`
+
+| Prop | Type | Défaut | Notes |
+| --- | --- | --- | --- |
+| `preset` | `string \| BannerPreset` | `"readme"` | Recette de surface |
+| `width`, `height` | `number` | preset | Surcharges de canvas logique |
+| `dpr` | `number` | preset | Device pixel ratio |
+| `background` | `string \| null` | thème bg | `"transparent"`/`null` → canvas alpha |
+| `theme` | `ThemeInput` | `"midnight"` | Nom de thème ou thème partiel |
+| `fps` | `number` | preset fps | Frames par seconde |
+| `fonts` | `FontSpec \| FontSpec[]` | – | Polices enregistrées avant capture |
+| `loop` | `boolean` | `false` | Déclare une boucle ; à associer à une transition `wrap` |
+| `transitionMs` | `number` | `250` | Chevauchement de transition de scène par défaut |
+| `tempo` | `number` | `1` | Fini, > 0 — accélération globale de la timeline |
+
+Les enfants doivent être `<Scene>`, `<Layer>` ou `<Series>` (les fragments s'aplatissent). Au moins une scène est requise ; le maximum est 64.
+
+### `<Scene>`
+
+| Prop | Type | Défaut | Notes |
+| --- | --- | --- | --- |
+| `duration` | `number` | requis | Frames |
+| `enter`, `exit` | `TransitionInput` | `"cut"` | `"cut" \| "crossfade" \| "slide" \| "rise" \| "push" \| "wrap"` ou `{ kind, ms }` |
+| `label` | `string` | – | Unique ; active `useCue("label+12f")` |
+
+`wrap` n'est honoré que sur la dernière scène d'une bannière bouclante. `push` ne blend jamais — les deux côtés doivent le déclarer.
+
+### `<Layer>`
+
+| Prop | Type | Défaut | Notes |
+| --- | --- | --- | --- |
+| `top` | `boolean` | `true` quand aucun n'est posé | Rend au-dessus de la pile de scènes |
+| `bottom` | `boolean` | `false` | Rend sous la pile de scènes |
+
+## Séquencement
+
+| Composant | Props | Comportement |
+| --- | --- | --- |
+| `<Sequence>` | `from=0`, `durationInFrames` (reste de la portée), `speed=1`, `reverse=false` | Les enfants ne rendent que dans la fenêtre ; le suivi de frame absolu est préservé |
+| `<Freeze>` | `at` (requis) | Les enfants voient la frame `at` pour toujours |
+| `<Series>` | enfants seulement | Liste plate de `<Series.Sequence>` ; l'imbrication erreur |
+| `<Series.Sequence>` | `durationInFrames` (requis), `enter`/`exit="cut"` | Empile les scènes dos à dos |
+| `<Loop>` | `durationInFrames` (requis ≥ 1), `times=Infinity`, enfants ou `(iteration) => ReactNode` | Répète son sous-arbre ; aussi le `useDuration` de l'enfant |
+
+## Texte et contenu
+
+| Composant | Props (défauts) | Notes |
+| --- | --- | --- |
+| `<SplitText>` | `text`, `by="chars" \| "words"`, `renderUnit` | Découpe en `TextUnit`s `{text, index, total, isSpace}` |
+| `<FitText>` | `text`, `maxWidth` (canvas − 32), `fontWeight=400`, `max=64`, `min=18`, `pad=0.985` | La plus grande taille mesurée par le moteur qui tient ; hors du runtime → `max` + `TM_FITTEXT_UNMEASURED` |
+| `<Fill>` | `style` | Conteneur flex absolu inset-0 — le centrage marche par défaut |
+| `<Img>` | `src` (data URI string ou `Buffer`), `mime="image/png"`, `width`, `height`, `alt`, `style` | Résolvez les fichiers avec `imageDataUriFromFile()` avant capture |
+| `<CountUp>` | `to`, `from=0`, `durationFrames` (scène), `delayFrames=0`, `spring?`, `ease="easeOut"`, `format` | Grammaire de pattern : `"$,.0f"`, `",.1f%"`, `"ms"` ; `tabular-nums` forcé |
+| `<Typewriter>` | `text`, `durationFrames` (scène − 12), `delayFrames=0`, `cursor=true`, `cursorPeriodFrames=15`, `cursorColor="currentColor"` | Le curseur est un bloc de currentColor de la taille d'un em qui clignote |
+| `<Glow>` | `color="#38bdf8"`, `size=220`, `x=0`, `y=0`, `blur=44`, `opacity=0.14` | Les défauts encodent la doctrine de taille ; attention à `TM_GLOW_GIF_DITHER` |
+
+## Vocabulaire de mouvement
+
+| Composant | Props (défauts) | Notes |
+| --- | --- | --- |
+| `<Animated>` | `entering?`, `exiting?`, `style` | Enveloppe un `div` simple ; se repose à **aucune** surcharge de style |
+| `<Keyframes>` | `frames` (`{ [frame]: { ...channels, easing? } }`), `style` | Les propriétés remplissent en avant ; les couleurs mélangent en OKLCH |
+| `<Camera>` | `pushIn?`, `pan?`, `shake?`, `transformOrigin?` | Amplitude `shake` 3, fréquence 0.2 — l'aliasing au-dessus de 0,5 déclenche `TM_NOISE_ALIASED` |
+| `<Wiggle>` | `amplitude=4`, `seed`, `rotateAmplitude=0` | Offset de bruit par frame |
+| `<FollowPath>` | `d`, `durationFrames`, `delayFrames=0`, `easing="easeInOut"`, `rotate={false \| "auto" \| number}` | Se déplace le long d'un chemin SVG |
+| `<Morph>` | `from`, `to`, `itemIds`, `renderItem`, `switchFrame=0`, `durationFrames=14`, `staggerFrames=0`, `contentSwitchAt=0.5`, `containerStyle?`, `itemStyle?` | FLIP mesuré via canaux position+taille — pas de scale, pas d'étirement de texte ; non mesuré → `TM_MORPH_UNMEASURED` |
+| `<Particles>` | `count=24` (≤ 256), `mode="sparkle" \| "confetti"`, `seed=1`, `colors`, `size`, `area`, `burstFrames?`, `gravity=0.35`, `speed=2.4`, `twinklePeriodFrames=16`, `opacity=0.9` | Particules à forme fermée par frame ; confetti sans `burstFrames` déclenche `TM_PARTICLE_CHURN` |
+
+Les presets enter/exit (26 au total, e.g. `FadeInDown`, `ZoomIn`) se chaînent avec `.duration(frames)`, `.delay(frames)`, `.springify(presetOrOptions)` ; `staggered(preset, index, opts)` cuit le stagger ; `defineTransition({ name, side, channels, durationFrames, easing })` déclare les personnalisés. Les segments se composent avec `chain(...)` et `hold(frames)`.
+
+## Charts
+
+| Composant | Props (défauts) | Notes |
+| --- | --- | --- |
+| `<LineChart>` | `data?`, `draw="reveal" \| "none"`, `drawDurationFrames=40`, `drawDelayFrames=6`, `area=false`, `grid=true`, `showPoints`, `showLabels`, `yTicks=4`, `strokeWidth=3` | Un SVG statique + balayage clip-path par frame |
+| `<BarChart>` | `data?`, `orientation="up" \| "right"`, `stagger=true`, `spring`, `showValues=true`, `formatValue`, `showLabels`, `gap=8`, `radius=6` | Les barres grandissent avec des ressorts décalés depuis la boîte de tracé mesurée |
+| `<Donut>` | `value` (0..1, requis), `size=140`, `thickness=size×0.14`, `color`, `trackColor`, `holeColor`, `paint="transform" \| "conic"`, `drawDurationFrames=36`, `center?` | `transform` est sûr pour la palette ; `conic` est l'alternative en dégradé |
+
+Les charts lisent le canal de données via `useChartData` quand la prop `data` est absente. Forme des données : `ChartData = { series: [{ name, color, points }], labels?, max? }` ; helpers `niceMax()`, `compactNumber()`.
+
+## Pack matériel
+
+| Composant | Props (défauts) | Notes |
+| --- | --- | --- |
+| `<Reveal>` | `wipe="left" \| "right" \| "up" \| "down" \| "circle"` (défaut `"right"`), `drawDurationFrames=30`, `drawDelayFrames=0`, `feather=0` | Gradient de masque animé ; `feather=0` est sûr pour la palette |
+| `<Mask>` | `image?`, `fade="top" \| "bottom" \| "left" \| "right"`, `fadeLength=24`, `mode="alpha" \| "luminance" \| "match-source"` | Exactement un de `image`/`fade` requis |
+| `<VariableText>` | `text`, `from=300`, `to=800`, `durationFrames=24`, `axis="wght"`, `fontSize?` | Nécessite une police variable enregistrée avec une plage de poids |
+| `<GradientText>` | `text`, `gradient` (linear-gradient), `fontSize?`, `fontWeight?` | Remplissage statique `background-clip: text` |
+
+<Aside type="caution">
+  Les particules sont livrées comme un seul composant : `<Particles mode="sparkle">` et `<Particles mode="confetti">`. Il n'y a pas d'éléments `<Sparkle>` ou `<Confetti>`.
+</Aside>
+
+## Étapes suivantes
+
+<LinkCard title="Hooks et math de mouvement" href="/reference/hooks" description="useFrame, useSpring, useInterpolate et les compagnons purs." />
+
+<LinkCard title="Codes de lint" href="/reference/lint-codes" description="Ce dont chaque composant peut avertir pendant la capture." />

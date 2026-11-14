@@ -1,0 +1,84 @@
+---
+title: Portails de qualité CI
+description: "Faites échouer les builds sur les shifts de layout, les ruptures de jointure et les budgets d'octets avec takumi-motion check et renderWithAudit."
+type: how-to
+---
+
+import { Aside, Code, LinkCard, Steps } from '@astrojs/starlight/components';
+
+Utilisez ce guide pour rendre les bannières cassées non livrables. Deux outils couvrent les portails : la commande CLI `check` pour une vérification rapide et locale, et `renderWithAudit` pour un audit complet sondant le déterminisme, comme données.
+
+## Codes de sortie sur lesquels verrouiller
+
+| Outil | Sortie | Signification |
+| --- | --- | --- |
+| `takumi-motion check` | `0` | Extents, jointure et tailles passent — « OK — ship it » |
+| `takumi-motion check` | `1` | Une violation d'extent non décorative, une jointure qui diffère sur une boucle déclarée, ou une taille hors budget — « FAILED — do not ship » |
+| `takumi-motion render --budget N` | `2` | La sortie a dépassé le budget d'octets après l'échelle fps |
+| `renderWithAudit()` | `0` / `1` / `2` | Passe / échec de contenu (extent hard-fail) / hors budget |
+
+La commande `check` rend la bannière une fois et l'audite. Avec `--out` elle écrit aussi les formats du preset et vérifie leurs tailles ; sans, l'audit tourne sans sortie de fichier.
+
+## Ajouter un portail GitHub Actions
+
+<Code lang="github-actions" code={`name: banner-quality
+on: [pull_request]
+
+jobs:
+  banners:
+ runs-on: ubuntu-latest
+ steps:
+   - uses: actions/checkout@v4
+   - uses: pnpm/action-setup@v4
+   - uses: actions/setup-node@v4
+     with:
+       node-version: 22
+       cache: pnpm
+   - run: pnpm install --frozen-lockfile
+   - name: Check banners
+     run: |
+       pnpm exec takumi-motion check src/banners/readme.tsx
+       pnpm exec takumi-motion check src/banners/og.tsx --budget 3000000
+   - name: Render artifact on failure for review
+     if: failure()
+     run: pnpm exec takumi-motion render src/banners/readme.tsx --out ./out`} />
+
+Le run échoué laisse les fichiers rendus dans `./out` pour upload en tant qu'artefact, donc les relecteurs voient exactement ce qui a fait échouer le portail.
+
+## Ce qu'audite `check`
+
+- **Extents** — l'arbre mesuré d'éléments est re-parcouru avec échantillonnage fin de transform sur grille ; toute boîte qui quitte la zone sûre du canvas échoue quand elle n'est pas décorative (les couches glow et ambiantes avertissent à la place).
+- **Jointure de boucle** — une `loop` déclarée doit rapporter une jointure correspondante ; l'énergie de jointure en mode strict au-dessus de 0,02 échoue sur le chemin déclaratif.
+- **Tailles** — avec `--out`, le nombre d'octets de chaque fichier écrit est comparé à son budget.
+
+## Audit comme données : `renderWithAudit`
+
+Intégrez les mêmes garanties dans votre propre pipeline. `renderWithAudit` rend, audite, et renvoie tout comme JSON :
+
+<Code lang="ts" code={`import { renderWithAudit } from "takumi-motion/audit";
+
+const { report, audit, exitCode, formatted } = await renderWithAudit({
+    banner: MyBanner,
+    preset: "readme",
+    budgetBytes: 2 * 1024 * 1024,
+    outDir: "./out",
+});
+
+if (exitCode !== 0) {
+    console.error(formatted);
+    process.exit(exitCode);
+}`} />
+
+L'objet `audit` contient `budget` (verdicts par fichier), `extents` (violations avec frame, cible, bord, débordement), `seam`, `warnings`, et un bloc `determinism` — un second rendu complet avec comparaison octet du premier poster. Traitez `audit.deterministic === false` comme une alarme sévère : cela signifie que le pipeline a perdu sa pureté quelque part (un `Math.random` hors du shim, une lecture d'horloge, un fetch réseau).
+
+<Aside type="tip">
+  `renderWithAudit` vit derrière le sous-chemin d'export `takumi-motion/audit` — un contrat d'embeddabilité délibéré pour les plateformes qui rendent des bannières utilisateur.
+</Aside>
+
+## Étapes suivantes
+
+<LinkCard title="Réduire la taille du fichier" href="/guides/reduce-file-size" description="Quand le portail de budget échoue, voici le playbook." />
+
+<LinkCard title="Boucles sans jointure" href="/guides/seamless-loops" description="Corrigez les échecs de jointure que votre portail attrape." />
+
+<LinkCard title="Renderers et rapports" href="/reference/renderers" description="Chaque champ de l'audit et des rapports de rendu." />

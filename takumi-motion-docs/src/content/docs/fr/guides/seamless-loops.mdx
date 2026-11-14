@@ -1,0 +1,65 @@
+---
+title: Boucles sans jointure
+description: "Faites répéter les bannières à l'infini avec des première et dernière frames octet-identiques — jointures de wrap, utilitaires de boucle et audit de jointure."
+type: how-to
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+Un badge README bouclant montre son point de coupure toutes les quelques secondes à moins que la dernière frame n'égale la première. Takumi Motion garantit cette égalité octet pour octet au lieu de vous demander de l'œil. Utilisez ce guide quand vous mettez `<Banner loop>`.
+
+## Chemin React : enveloppez la jointure
+
+Déclarez `loop` sur la bannière et marquez la frontière qui ferme le cercle. Soit la première scène entre avec `wrap`, soit la dernière sort avec `wrap` — l'un des deux, jamais les deux :
+
+<Code lang="tsx" code={`<Banner loop fps={24}>
+    <Scene duration={90}>…</Scene>
+    <Scene duration={76} exit="wrap">…</Scene>
+</Banner>`} />
+
+`exit="wrap"` ajoute une queue de crossfade dans la couche frame-0 figée de la scène 1 ; à la frame finale de wrap le nœud sortant disparaît, donc la dernière frame et la frame 0 sont octet-identiques par construction. Le rapport porte le verdict :
+
+<Code lang="json" code={`{ "seam": { "mode": "exact", "loop": true } }`} />
+
+<Aside type="caution">
+  Un `<Banner loop>` sans wrap gagne le lint `TM_LOOP_SEAM` pointant vers le correctif. Une transition `wrap` n'est honorée que sur la dernière scène d'une bannière bouclante.
+</Aside>
+
+Les bannières bouclantes postent par défaut leur poster à la frame 0 — la frame d'atterrissage — au lieu du défaut mi-timeline.
+
+## Chemin déclaratif : utilitaires de boucle
+
+L'export racine inclut quatre utilitaires composables :
+
+| Utilitaire | Objet |
+| --- | --- |
+| `fadeWrap(timeline, { selector, inMs, outMs, periodMs })` | Possède l'opacité d'une cible : fade in, hold, fade out. Pose `timeline.wrap = { selector }` pour que le vérificateur de jointure sache que la boucle est enveloppée. Jette quand la cible a déjà une piste d'opacité. |
+| `alignLoopPeriod(timeline, capMs?)` | Aligne la durée vers le PPCM des périodes de toutes les pistes infinies pour que chaque piste retombe sur sa phase à la jointure. Jette sur les pistes infinies déphasées ou un PPCM au-dessus du cap. |
+| `checkLoopSeam(timeline, { tolerance? })` | Renvoie `{ seamless, mode, diffs }`. Le mode `wrapped` vérifie l'opacité du wrap aux deux bouts (tolérance par défaut 0,02) ; le mode `strict` exige que la première valeur de chaque piste numérique égale sa dernière. |
+| `assertAmbientPeriod(durationMs, periodMs, label)` | Vérifie qu'une piste ambiante à cycle miroir (itération 2×) divise exactement la période de boucle. |
+
+Une boucle déclarative complète :
+
+<Code lang="ts" code={`import { createTimeline, alignLoopPeriod, fadeWrap, renderBanner } from "takumi-motion";
+
+const timeline = createTimeline({ fps: 20 })
+    .add(node, { y: [0, -12, 0] }, { duration: 1200, repeat: Infinity, repeatType: "mirror" });
+
+const aligned = alignLoopPeriod(timeline);
+const wrapped = fadeWrap(aligned, { selector: "#badge", inMs: 350, outMs: 350 });
+
+const report = await renderBanner({ node, timeline: wrapped, outDir: "./out" });`} />
+
+## Vérifier avant de livrer
+
+- **Chemin React** — lisez `report.seam.mode` ; le test doré de composition prouve `mode: "exact"` après une vérification d'octets.
+- **Chemin déclaratif** — appelez `checkLoopSeam(wrapped)` et affirmez `seamless === true`.
+- **CLI** — `takumi-motion check banner.tsx` échoue (sortie 1) quand une boucle déclarée rapporte `seam.mode === "differs"`. Câblez-le dans la CI avec [Portails de qualité](/guides/ci-quality-gates).
+
+## Étapes suivantes
+
+<LinkCard title="Portails de qualité CI" href="/guides/ci-quality-gates" description="Transformez les audits de jointure et d'extent en vérification bloquante au merge." />
+
+<LinkCard title="Animations pilotées par les données" href="/guides/data-driven-animations" description="Graphiques et count-ups qui survivent au bouclage." />
+
+<LinkCard title="Codes de lint" href="/reference/lint-codes" description="TM_LOOP_SEAM et tout autre avertissement codé." />

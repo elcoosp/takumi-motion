@@ -1,0 +1,114 @@
+---
+title: Renderers et rapports
+description: "Options et formes de rapport pour renderBanner, renderReactBanner, renderStill, renderWithAudit, sprite sheets, séquences de frames et HTML."
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+Chaque renderer renvoie un objet rapport — le rapport est l'API. Tous sont déterministes : les mêmes entrées produisent les mêmes octets à n'importe quelle concurrence et n'importe quel nombre de workers.
+
+## `renderBanner` — chemin déclaratif
+
+<Code lang="ts" code={`const report = await renderBanner({
+    node,              // arbre de nœuds takumi, ou un élément de forme React
+    timeline,          // TimelineJSON (timeline.toJSON())
+    preset: "readme",  // les options explicites gagnent sur le preset
+    outDir: "./out",   // omettre pour ne recevoir que les buffers
+    baseName: "banner",
+});`} />
+
+Options clés au-delà des champs de surface : `formats?`, `fps?`, `posters?` (un par défaut à 60 % de la timeline ; `false` pour sauter), `fonts?`, `webpQuality?`/`quality?`, `lossless?`, `budgetBytes?`, `collapseGifHolds?` (défaut `true`), `sequence?`, `spriteSheet?`, `parallel?` (défaut `true`).
+
+Champs de `BannerReport` : `preset`, `width`, `height`, `devicePixelRatio`, `physicalWidth`, `physicalHeight`, `fps`, `frames`, `durationMs`, `files[]` (`{ path, format, bytes, ms, withinBudget, frames, buffer }`), `posters[]`, `collapse` (`framesBefore/After`, `bytesBefore/After`), `fonts`, `totalBytes`, `budgetBytes`, `overBudget`, `warnings`, `surface`, `lint`, `sequence?`, `spriteSheet?`. `formatReport(report)` rend le texte lisible.
+
+## `renderReactBanner` — chemin React
+
+<Code lang="ts" code={`const report = await renderReactBanner({
+    banner: MyBanner,           // ou bannerModule: "./banner.tsx" (active les workers)
+    workers: "auto",
+    formats: ["webp"],
+    outDir: "./out",
+});`} />
+
+Options : `banner` xor `bannerModule`, `workers?: number | "auto"`, `preset?`, `fps?`, `formats?`, `outDir?`, `baseName?`, `fonts?`, `posters?` (défaut : frame 0 pour les boucles, sinon la frame reposée à 60 %), `collapseGifHolds?`, `safeZone?` (8), `sequence?`, `spriteSheet?`, `parallel?`, `concurrency?`, `fromFrame?`/`toFrame?`, `data?`, `explain?: boolean`, plus les champs de `SurfaceSpec`.
+
+Tout ce que `BannerReport` porte, plus :
+
+| Champ | Signification |
+| --- | --- |
+| `scenes` | Fenêtres de scènes planifiées |
+| `chunks` | Chunks de frames octet-identiques après merge |
+| `extents` | `{ canvas, safeZonePx, chunksChecked, transitionChunksSkipped, violations[] }` |
+| `seam` | `{ mode: "exact" \| "differs", loop }` — vérifié octet |
+| `timings` | `{ captureMs, parseMs, auditMs, encodeMs, totalMs }` |
+| `lint` | Avertissements codés (`TM_*`) avec hints |
+| `window` | La fenêtre de frames `[from, to)` qui a tourné |
+| `explain?` | Attribution de canal par frame quand `explain: true` |
+
+## `renderStill` — un PNG, n'importe quelle source
+
+<Code lang="ts" code={`const still = await renderStill({ banner: MyBanner });           // react
+const still = await renderStill({ html, css });                  // HTML brut
+const still = await renderStill({ node, timeline });             // déclaratif`} />
+
+Options : `frame?` (défaut : frame reposée ~60 % ; frame 0 pour HTML), `width`/`height`/`dpr`/`fps`, `quality`/`lossless`, `budgetBytes?`, `fonts?`/`fontFiles?`, `outDir?` (écrit `<base>.png`), `concurrency?`. Renvoie `{ source, frame, timeMs, width, height, devicePixelRatio, physicalWidth, physicalHeight, background, png, bytes, ms, path }`.
+
+## `renderSpriteSheet` et `exportFrameSequence`
+
+| Renderer | Options | Résultat |
+| --- | --- | --- |
+| `renderSpriteSheet(renderer, source, opts)` | `columns?` (défaut `ceil(√n)`), `every?` (1), `maxPixels?` (64M), `concurrency?` | Atlas PNG + métadonnées `{ version, frameWidth, frameHeight, columns, rows, frameCount, fps, frames[], css }` — `meta.css` est une recette `steps()` prête à coller |
+| `exportFrameSequence(renderer, source, opts)` | `outDir` (requis), `dirName="sequence"`, `every=1`, `baseName="frame"`, `concurrency?` | Fichiers `frame_00000.png` + manifeste `frames.json` contenant une one-liner ffmpeg ; les runs à frames identiques rendent une fois et réécrivent les octets par fichier |
+
+## `renderHtmlAnimation` — source HTML brute
+
+<Code lang="ts" code={`const report = await renderHtmlAnimation({
+    html,              // fragment ou document complet (<style> remonté)
+    css?,              // feuille(s) de style supplémentaire(s)
+    frames: 30,
+    outDir: "./out",
+});`} />
+
+Renvoie `HtmlSourceReport` avec `surface`, `frames`, `durationMs`, `cssEntries`, `styleBlocksHoisted`, `files`, `posters`, `fonts`, `fontFiles`, `totalBytes`, `budgetBytes`, `overBudget`, `warnings`, `collapse`.
+
+## `renderWithAudit` — audit comme données
+
+<Code lang="ts" code={`import { renderWithAudit } from "takumi-motion/audit";
+
+const { report, audit, exitCode, formatted } = await renderWithAudit({
+    banner: MyBanner,          // ou node+timeline, ou html+css
+    preset: "readme",
+    budgetBytes: 2 * 1024 * 1024,
+    outDir: "./out",
+});`} />
+
+`AuditReport` : `generator`, `generatorVersion`, `source`, `surface`, `timeline { frames, durationMs }`, `budget { budgetBytes, totalBytes, overBudget, files[] }`, `extents { checked, violations[], hardFailures }`, `seam { mode, loop }`, `determinism { deterministic, checkedBytes, detail }`, `warnings`. Codes de sortie : `0` passe, `1` échec de contenu, `2` hors budget. La sonde de déterminisme effectue un second rendu complet et compare octet par octet le premier poster.
+
+## `renderKit` — le set d'assets complet
+
+<Code lang="ts" code={`const kit = await renderKit(bannerResult, {
+    outDir: "./assets",
+    presets: ["readme", "readme-hd", "readme-lean"], // défaut
+});`} />
+
+Renvoie `KitReport { variants[], files[] ({ path, role }), totalBytes }` et écrit `<base>-<preset>.<ext>` plus `banner-static.png` — un twin à mouvement réduit. La CLI sort avec 2 quand une variante dépasse son budget. Bannières déclaratives seulement.
+
+## Primitives de concurrence
+
+| Fonction | Comportement |
+| --- | --- |
+| `resolveConcurrency(limit?)` | Int validé (cap 64) ou `min(availableParallelism(), 8, 64)` |
+| `mapWithConcurrency(items, limit, fn)` | Map à fenêtre glissante préservant l'ordre d'entrée |
+| `resolveWorkers(option, frameCount, estimatedWorkMs)` | La barrière `"auto"` : cœurs ≥ 4, frames ≥ 128, travail ≥ 400 ms ; cap 16 |
+| `windowGrid(total, workers)` | Fenêtres de frames paires pour le pool |
+
+<Aside type="note">
+  Les octets de sortie sont identiques à n'importe quelle concurrence ou nombre de workers — le parallélisme ne change que le temps mur. La sonde de déterminisme dans `renderWithAudit` existe pour attraper les impuretés qui casseraient cette promesse.
+</Aside>
+
+## Étapes suivantes
+
+<LinkCard title="CLI" href="/reference/cli" description="Chaque drapeau mappé sur ces options." />
+
+<LinkCard title="Déterminisme" href="/explanation/determinism" description="Sur quoi repose la garantie octet-identique." />

@@ -1,0 +1,69 @@
+---
+title: Codes de lint
+description: "Chaque code de lint d'authoring TM_* — ce qu'il attrape, pourquoi ça compte, et le correctif qu'il suggère."
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+Chaque rendu (`renderReactBanner`, `renderBanner`, `renderWithAudit`) porte un canal `lint: LintWarning[]` à côté des `warnings: string[]` hérités. Les trouvailles sont dédupliquées, plafonnées à 20 par code (avec une note de troncature), et survivent à `--json` — une plateforme consommatrice peut les rendre, les filtrer, ou faire échouer la CI sur des codes précis.
+
+<Code lang="ts" code={`interface LintWarning {
+    code: LintCode;   // identifiant TM_* stable
+    message: string;  // diagnostic, avec la clé/valeur/chemin fautif
+    hint?: string;    // le correctif, formulé comme ce qu'il faut faire à la place
+    severity: "warn" | "info";
+}`} />
+
+## Sûreté des styles
+
+| Code | Attrape | Pourquoi ça compte |
+| --- | --- | --- |
+| `TM_KEBAB_STYLE` | Clés en kebab-case dans les objets de style React | La table unitless de React 19 est indexée sur camelCase — `"font-weight": 700` se rend comme `font-weight:700px`, que le moteur rejette (le rendu échoue avec une erreur de parse Rust). Correctif : `"fontWeight"` |
+| `TM_NAN_STYLE` | `NaN` / `Infinity` / `undefined` dans les styles ou le markup | Ressorts cassés (stiffness 0), plages d'interpolate inversées — produit silencieusement des styles poubelle |
+| `TM_EMPTY_STYLE` | Éléments qui ont rendu `style=""` | Chaque déclaration a été abandonnée en amont — généralement le bug kebab ou un objet de style undefined |
+| `TM_UNKNOWN_STYLE_PROP` | (mode strict) propriétés hors de `SUPPORTED_STYLE_PROPS` | Consultatif — le moteur supporte plus que la liste curée ; vérifiez puis étendez |
+
+La sûreté au niveau type fait paire avec le lint : `satisfies TakumiStyle` transforme les fautes de frappe en erreurs de compilation, `UNITLESS_STYLE_PROPS` reflète la table unitless de React, et les propriétés `--custom` passent par la forme explicite de clé `--*`.
+
+## Mouvement et layout
+
+| Code | Attrape | Pourquoi ça compte |
+| --- | --- | --- |
+| `TM_SPRING_DURATION` | Pistes déclaratives mêlant `type: "spring"` et `duration` | Les ressorts sont résolus par la physique ; la durée est silencieusement ignorée |
+| `TM_TRANSITION_UNSETTLED` | Entrée/sortie `<Animated>` qui ne peut pas se terminer dans la fenêtre de sa scène | La math de repos est dans le message ; vérifiez `springSettleFrames(fps, opts) <= framesRemaining` pour un `useSpring` brut |
+| `TM_LAYOUT_SHIFT` | Une boîte mesurée qui se déplace dans une scène sans transform écrit | Le frère coupable et le delta sont nommés. Correctif : park absolu, espace réservé, ou chiffres à largeur fixe (`tabular-nums`, `minWidth`) |
+| `TM_MORPH_UNMEASURED` | `<Morph>` sans rects préchauffés | Les items sautent — rendez à travers le runtime de capture, qui préchauffe les deux états de layout |
+| `TM_FITTEXT_UNMEASURED` | `<FitText>` sans mesure préchauffée | Est retombé à la taille `max` — rendez à travers le runtime ou précalculez avec `fitFontSize()` |
+| `TM_NOISE_ALIASED` | Fréquence de bruit au-dessus de 0,5 cellule de lattice/frame (Nyquist) | Le mouvement alias en stroboscope — `<Camera shake>`, `<Wiggle>` |
+| `TM_VELOCITY_DROPPED` | `carryVelocity()` demandé sur un segment qui ne peut pas le recevoir | La chaîne perd son élan silencieusement sinon |
+
+## Taille et sortie
+
+| Code | Attrape | Pourquoi ça compte |
+| --- | --- | --- |
+| `TM_GLOW_GIF_DITHER` | `filter: blur()` dans un rendu GIF à dpr 1 | Le dithering de palette des gradients doux est le piège de taille GIF principal — les GIFs glow à 1× compressent moins bien qu'à 2× dans les benchmarks. Préférez WebP, dpr 2, ou accents plats |
+| `TM_PARTICLE_CHURN` | Churn de particules non borné ou confetti sans `burstFrames` / au-dessus du budget de 24 particules | La taille est delta par frame × frames ; un champ qui ne se repose jamais ne compresse jamais |
+| `TM_LOOP_SEAM` | Un `<Banner loop>` dont la dernière frame diffère de la frame 0 (pas de `wrap`) | La boucle saute visiblement — le hint pointe vers `exit="wrap"` |
+| `TM_FONT_NETWORK` | Spécs Google Fonts ou fichiers de police par URL fetchés au rendu | Le déterminisme d'octets ne tient que tant que les octets distants tiennent — vendez les TTF/OTF localement |
+
+## Travailler avec le canal
+
+<Code lang="ts" code={`const report = await renderReactBanner({ banner: MyBanner });
+
+for (const warning of report.lint) {
+    console.log(\`[\${warning.severity}] \${warning.code}: \${warning.message}\`);
+    if (warning.hint) console.log(\`  fix: \${warning.hint}\`);
+}`} />
+
+Helpers : `collectLintWarnings` déduplique, `formatLint` rend le texte, `camelHint` produit la suggestion kebab→camel, `NO_LINT` est le canal vide. Le mode strict (vérification de propriétés inconnues) est opt-in par appel de lint.
+
+<Aside type="tip">
+  Le lint est consultatif — rien ne fait échouer un rendu par lui-même. Verrouillez dessus en filtrant des codes précis en CI, ou utilisez `takumi-motion check` pour les audits en échec dur (extents, jointure, budget).
+</Aside>
+
+## Étapes suivantes
+
+<LinkCard title="Réduire la taille du fichier" href="/guides/reduce-file-size" description="Agir sur les codes liés à la taille." />
+
+<LinkCard title="Portails de qualité CI" href="/guides/ci-quality-gates" description="Faire échouer les builds sur les extents, la jointure et les budgets." />

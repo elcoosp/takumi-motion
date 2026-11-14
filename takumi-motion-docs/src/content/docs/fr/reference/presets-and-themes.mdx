@@ -1,0 +1,88 @@
+---
+title: Presets, thèmes et polices
+description: "Presets de bannière, thèmes, catalogue de polices, personnalités, et les quatre templates de bannière avec leurs props."
+type: reference
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Les presets sont des recettes, pas des contraintes — chaque champ qu'ils posent (width, height, dpr, fps, formats, quality, background, budget) peut être surchargé par rendu, et les options explicites gagnent.
+
+## Presets de bannière
+
+| Nom | Taille | dpr | fps | Formats | Qualité WebP | Budget |
+| --- | --- | --- | --- | --- | --- | --- |
+| `readme` | 850×200 | 1 | 20 | gif, webp | 82 | 2 Mio |
+| `readme-hd` | 850×200 | 2 | 20 | webp | 82 | 2 Mio |
+| `readme-lean` | 850×200 | 1 | 12 | gif | 78 | 1,25 Mio |
+| `readme-profile` | 850×300 | 1 | 20 | gif, webp | 82 | 2,25 Mio |
+| `readme-wide` | 1280×300 | 1 | 20 | gif, webp | 82 | 3 Mio |
+| `og-card` | 1200×630 | 1 | 20 | gif, webp | 85 | 4 Mio |
+
+Défauts du moteur de surface : dpr 1, fps 30, formats `[gif, webp]`, quality 82, budget 4 Mio. Limites dures : plafond de dimension 8192 px, dpr ≤ 8, fps ≤ 120. `resolveSurface(spec, preset?)` et `resolveBackground()` implémentent les règles ; `deviceSize()` convertit les pixels logiques en pixels device.
+
+## Thèmes
+
+Sept thèmes intégrés, résolus sur `midnight` quand partiels :
+
+| Nom | Caractère |
+| --- | --- |
+| `midnight` | Défaut — bleu-noir profond, accent calme |
+| `github-dark` / `github-light` | Paire de palettes GitHub |
+| `tokyo-night` | Bleu-violet sur sombre (accent `#7aa2f7`, police Sora) |
+| `dracula` | Violets et roses Dracula classiques |
+| `sunburst` | Thème clair chaud |
+| `paper-mono` | Look papier monochrome |
+
+Un `Theme` porte `{ name, bg, text, textDim, textFaint, surface, surfaceBorder, accent, glow, font? }`. Passez un objet partiel comme `ThemeInput` pour personnaliser — les champs manquants se complètent depuis `midnight`.
+
+## Catalogue de polices
+
+`ensureFonts(renderer, specs)` enregistre des Google Fonts par nom (dédupliquées par renderer) ; `fontCatalog` groupe la liste curée :
+
+| Rôle | Familles |
+| --- | --- |
+| display | Space Grotesk, Sora, Outfit, Manrope, Archivo, Inter |
+| mono | JetBrains Mono, IBM Plex Mono, Space Mono, Fira Code |
+| serif | Playfair Display, Lora, Fraunces |
+| body | Inter, Manrope, Noto Sans |
+
+Un `FontSpec` est un nom de famille ou `{ name, weight?, style?, generic? }`. Les polices variables s'enregistrent avec une plage : `{ name: "Inter", weight: "100..900" }` — requis pour `<VariableText>`.
+
+Pour des builds reproductibles, vendez les fichiers localement : `loadFontFiles` accepte chemins, URLs ou `Uint8Array` (TTF/OTF seulement — WOFF/WOFF2 sont rejetés). Les polices distantes marchent mais déclenchent `TM_FONT_NETWORK` parce que le déterminisme d'octets ne tient que tant que les octets distants tiennent.
+
+## Personnalités
+
+Les presets de personnalité pilotent les courbes d'easing, le stagger, le biais de hold, et l'intensité ambiante pour les templates et helpers d'orchestration :
+
+| Nom | Entrée | Stagger | Ambiant |
+| --- | --- | --- | --- |
+| `snappy` | backOut, spring 520/26 | 28 ms | 0,8 |
+| `smooth` | easeInOut | 42 ms | 0,6 |
+| `playful` | backOut/circIn, spring 300/17 | 34 ms | 1,0 |
+| `mechanical` | steps(8, end) / steps(6, start) | pair 22 ms | 0,35 |
+
+Helpers de mouvement ambiant : `ambient(timeline, target, kind, { periodMs, intensity })` ajoute une piste à cycle miroir (`kind: "drift" | "breathe" | "pulse" | "float"` — les périodes doivent diviser exactement la période de boucle) ; `ambientWindow(...)` gèle les holds entre fenêtres actives. Orchestration : `splitGlyphs`, `splitWords`, `revealUnits`, `revealRow`, `waveUnits`, `deceleratingStagger`.
+
+## Templates de bannière
+
+L'export `takumi-motion/recipes` livre quatre recettes à jointure stricte — `typewriter`, `countup`, `sweep`, `cascade` — chacune un constructeur async renvoyant un `BannerResult { element, timeline, fonts? }`. Props partagées : `theme`, `motion`, `font`, `width=850`, `height=200`, `fps=20`, `renderer?`.
+
+| Template | Props propres (défauts) | Comportement |
+| --- | --- | --- |
+| `typewriter` | `text` (requis), `tagline?`, `accent?`, `background?`, `speed=65` ms/car, `startMs=300`, `holdMs=1500` | Type-in avec fade par caractère, hold, backspace terminal, blink en queue ; boucle stricte |
+| `countup` | `stats` (requis : `{ label, value, suffix?, decimals? }[]`), `title?`, `accent?`, `background?`, `steps=6`, `countMs=1200`, `startMs=450`, `holdMs=1800` | Colonnes de stats en crossfade par couche de chiffres |
+| `sweep` | `title` (requis), `subtitle?`, `secondaryColor="#22d3ee"`, `background?`, `accent?`, `holdMs=1900` | Balayage de glow dégradé + entrée par letter-tracking, sortie en fade |
+| `cascade` | `title` (requis), `tagline?`, `accent?`, `background?`, `startMs=260`, `holdMs=1700`, `rise=20` (0..48) | Montée+fade par glyphe avec stagger décélérant, dépassement de règle accent, sortie en cascade |
+
+`buildTemplate({ name, props })` invoque par nom ; `bannerTemplates` liste le registre.
+
+<Aside type="note">
+  Les résultats de template portent déjà leurs polices et leur thème — passez le résultat entier à `renderBanner` ou à la CLI et le renderer enregistre tout avant de mesurer.
+</Aside>
+
+## Étapes suivantes
+
+<LinkCard title="Renderers et rapports" href="/reference/renderers" description="Comment les presets se résolvent au rendu." />
+
+<LinkCard title="Réduire la taille du fichier" href="/guides/reduce-file-size" description="Budgets et échelle fps en pratique." />

@@ -1,0 +1,61 @@
+---
+title: Takumi Motion
+description: "Moteur d'animation déterministe côté serveur — React ou HTML en entrée, GIF/WebP/APNG/sprite-sheet/still en sortie, rendu par Rust."
+type: reference
+template: splash
+hero:
+  tagline: "N'importe quel composant React ou chaîne HTML brute devient un GIF, un WebP, un APNG, une séquence PNG, un sprite sheet ou un still — rendu côté serveur par le moteur Rust <a href=\"https://github.com/nadilas/takumi\">takumi</a>. Sortie octet-identique à chaque run, à n'importe quelle concurrence, sur n'importe quelle machine."
+  title: Une animation qui se rend comme une étape de build
+  actions:
+    - text: Construire votre première bannière
+      link: /tutorials/first-banner
+      icon: right-arrow
+    - text: Référence CLI
+      link: /reference/cli
+      icon: external
+  image:
+    alt: Logo Takumi Motion
+    file: ../../../assets/logo.png
+---
+
+import { Aside, Card, CardGrid, LinkButton, LinkCard } from '@astrojs/starlight/components';
+
+Takumi Motion compile les timelines d'animation à l'avance, capture les frames de façon déterministe, et délègue la rasterisation à un backend Rust. Pas de navigateur headless, pas de layout thrashing, pas de replays non déterministes — la même entrée produit les mêmes octets, à chaque fois.
+
+## Choisissez votre chemin
+
+<CardGrid stagger>
+  <Card title="Votre première bannière" color="#DF4D24">
+    Installez le paquet, définissez une bannière React, et rendez-la en WebP en une séance.
+  </Card>
+  <Card title="Bannières déclaratives" color="#A8381A">
+    Sautez entièrement JSX — composez des recettes de bannière depuis des templates et rendez depuis TypeScript.
+  </Card>
+  <Card title="Automatiser les portails de qualité" color="#DF4D24">
+    Câblez `takumi-motion check` et les budgets d'octets dans la CI pour que les bannières cassées ne mergent jamais.
+  </Card>
+  <Card title="Livrer des fichiers plus petits" color="#A8381A">
+    Utilisez le X-ray, l'échelle de budget et la doctrine de taille pour couper les octets GIF/WebP d'un ordre de grandeur.
+  </Card>
+</CardGrid>
+
+<LinkButton href="/tutorials/declarative-banners/" icon="right-arrow">Commencer le tutoriel</LinkButton>
+
+## Pourquoi Takumi Motion
+
+- **Déterministe par construction** — `Math.random` est amorcé par frame, le temps du moteur est en millisecondes entières, et chaque frame est une fonction pure de `(frame, props)`. Les sorties sont octet-identiques à travers les runs, les nombres de workers et les machines.
+- **Rendu Rust-rapide** — le moteur takumi rasterise les layouts de style CSS en code natif. La passe *Velocity* v1.0 a soulevé le chemin chaud d'une moyenne géométrique de **1,71×** sur 13 benchmarks.
+- **Authoring React** — les bannières sont des arbres React ordinaires avec les primitives `<Scene>` et `<Layer>`, des ressorts et easings compatibles Motion, et des hooks pilotés par frame.
+- **Outillage de qualité intégré** — un lint d'authoring codé (`TM_*`), une attribution X-ray par frame, un audit d'extents, et une vérification de jointure de boucle voyagent avec chaque rapport de rendu.
+
+<Aside type="tip">
+  Lisez [Déterminisme](/explanation/determinism) si vous avez déjà livré une bannière animée qui rendait différemment en CI qu'en local — Takumi Motion élimine toute cette classe de bugs.
+</Aside>
+
+## Étapes suivantes
+
+<LinkCard title="Votre première bannière" href="/tutorials/first-banner" description="Une visite guidée complète de l'installation à un badge WebP rendu." />
+
+<LinkCard title="Référence CLI" href="/reference/cli" description="Chaque commande et drapeau que le binaire takumi-motion supporte." />
+
+<LinkCard title="Architecture" href="/explanation/architecture" description="Comment l'authoring, la capture et le moteur Rust s'articulent." />

@@ -1,0 +1,67 @@
+---
+title: Déterminisme
+description: "Le modèle de frame, la randomisation amorcée, le temps moteur entier, et la garantie octet-identique."
+type: explanation
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+« Déterministe » est le produit. Cette page explique les mécanismes qui rendent chaque rendu reproductible octet pour octet — et les règles que votre code doit suivre pour les garder intacts.
+
+## Le modèle de frame
+
+Chaque frame est une fonction pure de `(frame, props)` :
+
+- Les frames sont des entiers. Le temps n'entre dans le moteur que comme millisecondes entières (`toEngineMs` borne et plancher à chaque frontière — un `timeMs` fractionnaire est rejeté côté Rust).
+- Les hooks et composants lisent la frame, jamais l'horloge : `useFrame()`, `useCurrentFrame()`, `useAbsoluteFrame()`. Il n'y a pas de `Date.now()` dans le runtime et aucun n'est autorisé dans vos composants.
+- Les replays sont exacts : la frame 137 d'un rendu est identique à la frame 137 de tout autre rendu de la même entrée, qu'elle ait lieu localement, en CI, ou à l'intérieur d'une fenêtre de worker.
+
+## Randomisation amorcée
+
+`Math.random()` est shimmé pendant la capture en `mulberry32(seed ⊕ imul(frame))` — le flux PRNG de chaque frame repart à neuf depuis sa propre graine. Conséquences :
+
+- Le mouvement aléatoire (particules, wiggle, confetti) rejoue octet-identiquement à n'importe quel indice de frame, dans n'importe quel ordre, à travers n'importe quel nombre de workers.
+- Le shim v1.0 est par frame : un flux ne continue pas d'une frame à l'autre. Le code qui consommait une randomisation croissante entre frames doit amorcer explicitement (`useRandom(seed, salt)`).
+- Le code d'authoring devrait utiliser `useRandom`/`randomFor` directement — appeler `Math.random` ne fonctionne que tant que le shim le couvre et cache la graine au système.
+
+## Temps moteur entier et grille fps
+
+L'étape de compilation cuit chaque piste sur une grille fps partagée plus des frontières structurelles, donc le moteur ne voit que des temps en millisecondes entières. Les ressorts sont l'exception à connaître : ils sont résolus analytiquement par échantillon (pas de grille), avec des seuils de repos issus de la physique de Motion (`restSpeed`, `restDelta`). `springSettleFrames(fps, options)` vous dit quand un ressort arrête visuellement de bouger — si cela dépasse la fenêtre de scène, le lint `TM_TRANSITION_UNSETTLED` se déclenche.
+
+## La sonde de déterminisme
+
+`renderWithAudit` rend deux fois et compare octet pour octet le premier poster :
+
+<Code lang="json" code={`{
+    "determinism": {
+  "deterministic": true,
+  "checkedBytes": 18432,
+  "detail": "poster @ 1500ms byte-identical across renders"
+    }
+}`} />
+
+`deterministic: false` est une alarme sévère — cela signifie qu'une entrée a varié entre deux rendus. Les coupables habituels, par ordre de probabilité :
+
+1. Un fetch réseau ou `Date.now()` à l'intérieur d'une fonction de rendu.
+2. Des polices distantes (Google) — leurs octets peuvent changer en amont ; vendez les TTF/OTF localement (le lint `TM_FONT_NETWORK` prévient).
+3. Un `Math.random` non amorcé en dehors des étapes de capture shimmées.
+
+## La capture parallèle tient la promesse
+
+Les workers rendent des fenêtres de frames concurrentes, pourtant la sortie reste octet-identique à la capture série à n'importe quel nombre de workers. Les mécanismes :
+
+- Accord de plan — chaque worker affirme avoir dérivé le même plan de scène avant de rendre.
+- Randomisation amorcée par frame (ci-dessus) — les frontières de fenêtre ne peuvent pas décaler les flux PRNG.
+- Re-merge unique — les fenêtres se concatènent et se re-chunkent une fois sur le thread principal.
+
+Les tests dorés du dépôt affirment cet invariant, et la sonde de `renderWithAudit` le vérifie à chaque rendu.
+
+<Aside type="caution">
+  Le déterminisme est pourquoi certaines commodités sont absentes : pas d'horloges en direct, pas de fetches réseau au rendu, pas de randomisation non amorcée, pas de polices WOFF (leurs octets devraient être de confiance en amont). Chaque restriction achète une garantie octet-exacte.
+</Aside>
+
+## Étapes suivantes
+
+<LinkCard title="Capture parallèle" href="/guides/parallel-capture" description="Utiliser des workers sans abandonner l'identité octet." />
+
+<LinkCard title="Renderers et rapports" href="/reference/renderers" description="L'objet d'audit de renderWithAudit en entier." />

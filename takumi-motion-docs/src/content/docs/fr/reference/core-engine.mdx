@@ -1,0 +1,109 @@
+---
+title: API du moteur central
+description: "createTimeline, compileTimeline, evaluateAt, springs, inertia, easings, interpolation et couleur OKLCH."
+type: reference
+---
+
+import { Aside, Code, LinkCard } from '@astrojs/starlight/components';
+
+L'export racine (`takumi-motion`) expose le cœur d'authoring et d'évaluation. React est un peer optionnel — tout sur cette page tourne sans lui.
+
+## Timelines
+
+### `createTimeline(options?)` → `Timeline`
+
+<Code lang="ts" code={`const timeline = createTimeline({ fps: 20, defaultTransition })
+    .add(target, keyframes, options)
+    .label("intro");`} />
+
+`add(target, keyframes, options?)` accepte des records partiels de `AnimatableProperty` → keyframes et renvoie des handles `TimelineTarget`. Options :
+
+| Option | Type | Défaut | Notes |
+| --- | --- | --- | --- |
+| `at` | `number \| "<" \| "<+n" \| "<-n" \| label` | fin du précédent | Position sur la timeline |
+| `stagger` | `number` | `0` | Décalage par cible (ms) |
+| `times` | `number[]` | régulier | Temps de keyframes |
+| `delay`, `repeat`, `repeatType`, `repeatDelay` | lecture | – | `repeatType: "loop" \| "reverse" \| "mirror"` |
+| champs de transition | – | – | `type`, `stiffness`, `damping`, `duration`, `ease`, … |
+
+Les transitions par défaut reflètent Motion : plus de 2 keyframes → tween 800 ms ; transforms → spring (scale 550/damped, autres 500/25) ; tout le reste → tween 300 ms `ease [0.25, 0.1, 0.35, 1]`. Les cibles d'élément React reçoivent des classes sélecteur auto-assignées `tm-N`.
+
+`Timeline.toJSON()` produit le format d'échange que chaque renderer accepte :
+
+<Code lang="ts" code={`interface TimelineJSON {
+    version: 1;
+    durationMs: number;
+    tracks: TrackJSON[];
+    wrap?: { selector: string };
+}`} />
+
+### Transforms
+
+| Fonction | Comportement |
+| --- | --- |
+| `shiftTimeline(timeline, deltaMs)` | Décale tout plus tard ; refuse les deltas négatifs (ils couperaient les pistes) |
+| `concatTimelines([a, b, c])` | Empile les timelines dos à dos — l'équivalent données de `<Series.Sequence>` |
+| `scaleTimeline(timeline, tempo)` | Remet à l'échelle les durées de tween (les ressorts ne sont pas remis à l'échelle) |
+
+## Compilation et évaluation
+
+### `compileTimeline(json, { fps? = 30, resolveBase?, lint? = true })` → `CompiledTimeline`
+
+Cuit toute la timeline sur une grille fps partagée et des frontières structurelles : règles CSS keyframes par sélecteur, props de transform mergées par cible, timing linéaire, fill both. Renvoie `{ css, durationMs, fps, animations, lint }` — `durationMs` est aligné sur la grille fps ; `lint` porte les avertissements d'authoring. Les renderers l'appellent en interne ; cuisez-le vous-même pour inspecter ou livrer le CSS.
+
+### `evaluateAt(json, tMs, { resolveBase?, rawTransforms? })` → `EvaluatedStyles`
+
+Échantillonne chaque piste au temps `tMs` et renvoie `Record<selector, Record<prop, value>>` avec la chaîne `transform` composée. C'est la vérité mono-frame sur laquelle les chemins still/filmstrip se construisent. Le temps moteur est en millisecondes entières à la frontière (`toEngineMs` borne et plancher).
+
+## Ressorts et inertie
+
+### `springGenerator(options)` → `SpringGenerator`
+
+| Option | Défaut | Notes |
+| --- | --- | --- |
+| `stiffness` | `100` | Mode physique |
+| `damping` | `10` | Mode physique |
+| `mass` | `1` | Mode physique |
+| `duration` | `800` | Mode temps (ms) |
+| `bounce` | `0.3` | Mode temps (0 = amorti critique) |
+| `visualDuration` | – | Durée perceptuelle (s) — alternative à `duration` |
+| `velocity` | `0` | Vélocité initiale |
+| `restSpeed` / `restDelta` | défauts Motion | Seuils de repos |
+| `keyframes` | – | `[from, to]` pour les ressorts retargetables |
+
+Le générateur expose `next(t)`, `velocity(t)`, `retarget(keyframes, newVelocity)` et `calculatedDuration`. Les configurations sur-amorties se bornent (`overshootClamping`). Helpers : `calcGeneratorDuration(gen)`, `springDefaults`.
+
+### `inertiaGenerator(options)` → `InertiaGenerator`
+
+Mouvement decay-and-bounce : `velocity` 0, `power` 0.8, `timeConstant` 325, `bounceDamping` 10, `bounceStiffness` 500, `restDelta` 0.5, `min`/`max`/`modifyTarget` optionnels. Les ressorts de capture aux frontières gardent le mouvement dans la plage.
+
+<Aside type="caution">
+  Les ressorts sont résolus par la physique — un `duration` sur une piste de ressort est silencieusement ignoré et déclenche le lint `TM_SPRING_DURATION`.
+</Aside>
+
+## Easing
+
+`Easing` namespace — sémantique React Native, exacte :
+
+- Courbes : `linear`, `easeIn/Out/InOut`, `circIn/Out/InOut`, `backIn/Out/InOut`, `bounceIn/Out/InOut`, `anticipate`
+- Fabriques : `Easing.poly(n)`, `Easing.elastic(bounciness = 1)`, `Easing.back(s = 1.70158)`, `Easing.bezier(x1, y1, x2, y2)`, `Easing.steps(n, "start" | "end")`
+- Combinateurs : `Easing.in(f)`, `Easing.out(f)`, `Easing.inOut(f)` — les courbes de base sont in-shape, donc `in` est l'identité
+
+Les noms de chaîne (`"backOut"`, `"easeInOut"`, …) sont acceptés partout où un `Easing` apparaît ; les tableaux sont des béziers cubiques. `easingToCssTiming(def)` renvoie une fonction de timing CSS ou `null` quand la courbe doit être cuite par frame. `getEasingForSegment(easing, i)` enveloppe les tableaux à travers les segments.
+
+## Interpolation et couleur
+
+| Fonction | Notes |
+| --- | --- |
+| `createTweenSampler({ keyframes, times?, ease?, duration }, baseValue?)` | Easings par segment précalculés, lookup de segment par recherche binaire (v1.0) ; `sample(tMs)` borne |
+| `mixColor(from, to, t, { space? = "oklch" })` | Mélange perceptuel — **OKLCH est le défaut**, chemin de teinte le plus court |
+| `interpolateColorFor(frame, inputFrames, colors, { space?, easing? })` | Mapping couleur multi-stop pour la frame |
+| `parseColor(css)` / `rgbaToCss(rgba)` / `colorToOklch(css)` | Hex 3/4/6/8, `rgb()`, `hsl()`, 148 couleurs nommées, `transparent` ; les résultats de parse mémoïsent |
+| `mixColors` / `mixComplex` / `mixValues` | Les blenders figés du chemin de compilation — contrat de déterminisme d'octets ; utilisez les API `color.ts` pour le nouveau travail |
+| `buildTransform` / `isTransformProp` / `transformPropOrder` | Composition CSS transform dans l'ordre moteur |
+
+## Étapes suivantes
+
+<LinkCard title="Renderers et rapports" href="/reference/renderers" description="Où va TimelineJSON une fois écrit." />
+
+<LinkCard title="Architecture" href="/explanation/architecture" description="Comment l'authoring, la compilation et la rasterisation s'articulent." />

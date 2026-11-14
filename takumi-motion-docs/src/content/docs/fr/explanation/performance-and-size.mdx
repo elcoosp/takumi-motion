@@ -1,0 +1,59 @@
+---
+title: Performance et taille
+description: "Ce que la passe Velocity de la v1.0 a optimisé, les chiffres de benchmark, et la doctrine de taille derrière les encodeurs."
+type: explanation
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+La version v1.0 (« Velocity ») est une passe de performance sur le pipeline v0.9.1 gelé, testée différentiellement octet-identique — chaque optimisation a changé la vitesse, jamais la sortie. Cette page consigne ce qui a changé, les gains mesurés, et la doctrine de taille qui guide les encodeurs.
+
+## Ce qui est devenu plus rapide
+
+Le pipeline est React/HTML → `renderToStaticMarkup` par frame → merge de chunks → `fromHtml` (napi) → `renderAnimation` (Rust, rayon) → encodage → post-traitement. La passe Velocity a retiré quatre classes de gaspillage :
+
+| Changement | Mécanisme | Chemin chaud |
+| --- | --- | --- |
+| Mémoïsation de solveur | Générateurs de ressorts et durées de repos mémoïsés sur les paramètres de transition | `springFor` — chaque Animated/spring par frame |
+| Échantillonnage de tween par recherche binaire | Easings par segment précalculés une fois ; lookup de segment O(log n) | bake de compilation, évaluateurs |
+| Pistes mémoïsées par identité | `resolveTrack` mémoïse sur l'identité d'objet (WeakMap) ; maps de transform indexées par cible | `evaluateAt` |
+| Mémo de parse de couleur | Résultats de `parseToRgba` mémoïsés (borné) | mélange de couleur par frame |
+| Dédupe de compilation structurelle | Grille fps construite une fois et partagée ; dédupe d'étape structurelle remplaçant le `JSON.stringify` par point | `compileTimeline` |
+| Index de chunks par recherche binaire | Un helper partagé O(log n) frame→chunk | posters, séquences, sprite sheets, filmstrips, storyboards |
+| Passes GIF zéro-copie | Vues `subarray` + `memcmp` natif (`Buffer#equals`) pour les holds ≥ 64 octets | collapse de hold GIF |
+| Filtre PNG min-SAD | Heuristique standard de filtre par ligne (min sum of absolute differences) + deflate niveau 9 | encodeurs sprite/séquence |
+
+## Mesuré (Node 24, linux x64, médiane de 9 exécutions)
+
+| Bench | Baseline | v1.0 | Gain |
+| --- | --- | --- | --- |
+| Index de chunks : 200 k lookups sur 400 chunks | 37,4 ms | 5,3 ms | **7,07×** |
+| Spring : 3 000 échantillons, 20 configs | 4,4 ms | 1,1 ms | **3,87×** |
+| evaluateAt : 400 balayages × 5 pistes | 2,8 ms | 0,9 ms | **3,14×** |
+| Mélange de couleur : 50 k mélanges | 25,4 ms | 9,6 ms | **2,65×** |
+| Capture : bannière de 80 frames (probe→chunk) | 6,6 ms | 3,6 ms | **1,84×** |
+| Bout en bout : bannière 80f, série | 53,5 ms | 37,3 ms | **1,43×** |
+| Octets d'atlas PNG (gradient 850×400) | 767 Kio | 2,0 Kio | **−100 %** |
+| **Moyenne géométrique (13 benches chronométrés)** | | | **1,71×** |
+
+Deux pertes honnêtes : le CPU d'encodage PNG a augmenté de 33 % sur le bench atlas (l'heuristique min-SAD coûte du temps pour économiser des octets), et `workers: 4` sur un hôte à 2 cœurs a mesuré 0,88× — la raison pour laquelle la barrière auto existe.
+
+## La doctrine de taille
+
+La taille encodée est delta par frame × frames. La conception du moteur garde les deux termes bas :
+
+- **Les descripteurs au repos n'émettent rien.** Une fois qu'une transition enter/exit ou un ressort se repose, les wrappers arrêtent d'émettre des surcharges de style, donc les frames identiques se fusionnent en holds à delta zéro. La passe GIF réécrit les holds comme délais de frame plus longs ; le bloc `collapse` du rapport le quantifie.
+- **Churn fini seulement.** Les bursts de confetti se reposent à `burstFrames` ; les champs non bornés déclenchent `TM_PARTICLE_CHURN`. Un GIF qui ne s'arrête jamais de bouger ne compresse jamais.
+- **Valeurs entières, quantifiées.** Les valeurs émises arrondissent à 6 décimales ; les sorties de couleur sont des `rgb()` à canaux entiers — les quantiseurs de palette arrondissent de toute façon, et des valeurs stables gardent le mergeur de chunks efficace.
+- **Canaux bon marché préférés.** Les changements d'opacité et de clip sont bon marché ; le churn de layout, de texte et de structure ré-encode des régions entières. Le X-ray (`--explain`) attribue chaque frame à son canal pour que vous voyiez quel terme vous payez.
+- **Le choix de format est un levier de taille.** WebP pour les gradients et le glow, dpr 2 quand les plateformes hôtes re-compressent de toute façon, `readme-lean` quand les octets dominent. Le [guide de taille](/guides/reduce-file-size) transforme chaque levier en étapes.
+
+<Aside type="note">
+  Les benchmarks vivent dans le dépôt (`docs/BENCHMARKS.md`) avec le baseline gelé dans `bench/baseline/` — une copie verbatim de l'arbre v0.9.1 — donc chaque chiffre ci-dessus est reproductible depuis la source.
+</Aside>
+
+## Étapes suivantes
+
+<LinkCard title="Réduire la taille du fichier" href="/guides/reduce-file-size" description="Appliquer la doctrine à vos bannières." />
+
+<LinkCard title="Capture parallèle" href="/guides/parallel-capture" description="La barrière de worker-pool et quand elle gagne." />

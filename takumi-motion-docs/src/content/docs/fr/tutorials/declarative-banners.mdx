@@ -1,0 +1,131 @@
+---
+title: Bannières déclaratives
+description: "Composez et rendez des bannières à partir de templates et timelines — sans composants React."
+type: tutorial
+---
+
+import { Aside, Code, LinkCard, Steps, TabItem, Tabs } from '@astrojs/starlight/components';
+
+Toutes les bannières n'ont pas besoin d'un arbre de composants. Takumi Motion livre quatre recettes de bannière déterministes — `typewriter`, `countup`, `sweep` et `cascade` — plus une API de timeline déclarative. Dans ce tutoriel vous rendez une bannière basée sur template depuis un fichier TypeScript simple, puis émettez le kit d'assets multi-preset complet.
+
+## Prérequis
+
+- Node.js 22 ou plus récent
+- `takumi-motion` installé (voir [Votre première bannière](/tutorials/first-banner) pour l'installation)
+
+## 1. Rendre un template
+
+Les templates sont des fonctions qui renvoient un `BannerResult` — un élément plus une timeline prête à compiler. Créez `release-banner.ts` :
+
+<Code lang="ts" code={`import { gradientSweepBanner, renderBanner } from "takumi-motion";
+
+const result = await gradientSweepBanner({
+    title: "v2.4 — no more cold starts",
+    subtitle: "cold starts down 96%",
+    theme: "dracula",
+});
+
+const report = await renderBanner({
+    node: result.element,
+    timeline: result.timeline,
+    preset: "readme",
+    outDir: "./out",
+    baseName: "release",
+});
+
+console.log(report.totalBytes, report.overBudget);`} />
+
+Exécutez-le :
+
+<Code lang="sh" code={`node release-banner.ts`} />
+
+Vous obtenez `./out/release.gif` et `./out/release.webp` plus un poster PNG. Le template cuit une jointure de boucle stricte, donc l'animation se répète sans coupure visible.
+
+## 2. Comprendre les props partagées des templates
+
+Les quatre templates partagent le même vocabulaire d'options (`TemplateStyleProps`) :
+
+| Prop | Type | Défaut | Signification |
+| --- | --- | --- | --- |
+| `theme` | `ThemeInput` | `"midnight"` | Nom de thème couleur ou objet de thème partiel |
+| `motion` | `"snappy" \| "smooth" \| "playful" \| "mechanical"` | défaut du template | Preset de personnalité pilotant easing et stagger |
+| `font` | `FontSpec` | défaut du thème | Nom ou spec Google Font |
+| `width` / `height` | `number` | 850 / 200 | Taille logique du canvas en pixels |
+| `fps` | `number` | 20 | Frames par seconde de la timeline cuite |
+| `renderer` | `TakumiRenderer` | renderer partagé | Instance de renderer préconstruite pour réutilisation |
+
+Chaque template ajoute ses propres props — par exemple `typewriter` prend `text`, `tagline` et `speed` (millisecondes par caractère) ; `countup` prend un tableau `stats` de `{ label, value, suffix?, decimals? }`. Les signatures complètes vivent dans [Presets, thèmes et polices](/reference/presets-and-themes#banner-templates).
+
+## 3. Utiliser la CLI pour des rendus ponctuels
+
+La commande `render` charge un module et rend ce qu'il exporte — un résultat de template, un objet élément-plus-timeline, ou une fonction sync/async renvoyant l'un ou l'autre. Créez `banner-cli.ts` :
+
+<Code lang="ts" code={`import { cascadeBanner } from "takumi-motion/recipes";
+
+export default await cascadeBanner({
+    title: "takumi-motion",
+    tagline: "deterministic banners from code",
+    accent: "#DF4D24",
+});`} />
+
+Puis rendez-le depuis le terminal :
+
+<Tabs>
+  <TabItem label="pnpm">
+<Code lang="sh" code={` pnpm exec takumi-motion render banner-cli.ts --preset readme-wide --out ./out`} />
+  </TabItem>
+  <TabItem label="npx">
+<Code lang="sh" code={` npx takumi-motion render banner-cli.ts --preset readme-wide --out ./out`} />
+  </TabItem>
+</Tabs>
+
+Le loader résout, dans l'ordre : l'export par défaut du module, un export `banner`, puis un export `element`. Il accepte les éléments React, les fonctions `defineBanner` et les résultats de template `{ element, timeline }` de la même façon.
+
+## 4. Émettre le kit d'assets complet
+
+Le drapeau `--kit` rend une bannière à travers plusieurs presets plus un twin statique à mouvement réduit — le set d'assets complet pour un README de projet :
+
+<Code lang="sh" code={`pnpm exec takumi-motion render banner-cli.ts --kit --out ./assets`} />
+
+Programmatiquement, le même appel est `renderKit` :
+
+<Code lang="ts" code={`import { renderKit } from "takumi-motion";
+
+const kit = await renderKit(bannerResult, { outDir: "./assets" });
+console.log(kit.files); // [{ path, role }, ...]`} />
+
+Le kit écrit les fichiers `<base>-<preset>.<ext>` pour les presets `readme`, `readme-hd` et `readme-lean`, plus `banner-static.png`. La CLI sort avec le code 2 quand une variante dépasse le budget d'octets de son preset.
+
+<Aside type="caution">
+  `--kit` supporte les bannières déclaratives seulement. Le chemin React imprime un avertissement et rend normalement.
+</Aside>
+
+## 5. Écrire une timeline personnalisée
+
+Quand les templates ne suffisent pas, construisez une timeline directement. `createTimeline` reflète l'API de Motion — cibles, keyframes, transitions — et les renderers consomment sa forme JSON. Le JSON de timeline est le format d'échange que chaque chemin de rendu accepte :
+
+<Code lang="ts" code={`import { createTimeline, renderBanner, h } from "takumi-motion";
+
+const node = h("div", { style: { fontSize: 42, fontWeight: 700 } }, "ship it");
+
+const timeline = createTimeline({ fps: 20 }).add(
+    node,
+    { opacity: [0, 1], y: [-24, 0] },
+    { at: 0, duration: 600 },
+);
+
+const report = await renderBanner({
+    node,
+    timeline: timeline.toJSON(),
+    outDir: "./out",
+});`} />
+
+`renderBanner` lance `compileTimeline` en interne — cuisez-le vous-même seulement quand vous avez besoin de la sortie CSS pour inspection. Les transforms de timeline (`shiftTimeline`, `concatTimelines`) composent des séquences plus longues déclarativement — l'équivalent données d'empiler des scènes.
+
+## Étapes suivantes
+
+<LinkCard title="API du moteur central" href="/reference/core-engine" description="createTimeline, compileTimeline, evaluateAt, springs, easings et couleur." />
+
+<LinkCard title="Réduire la taille du fichier" href="/guides/reduce-file-size" description="Échelles de budget, collapse de hold, et le X-ray qui trouve le gaspillage de taille." />
+
+<LinkCard title="CLI" href="/reference/cli" description="Drapeaux pour les formats, budgets, sprite sheets et fenêtres de frames." />

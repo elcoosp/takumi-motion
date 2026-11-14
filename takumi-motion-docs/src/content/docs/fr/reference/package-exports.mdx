@@ -1,0 +1,53 @@
+---
+title: Exports du paquet
+description: "La carte d'exports par sous-chemin de takumi-motion — ce que chaque point d'entrée expose et les exigences de runtime."
+type: reference
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+`takumi-motion` est ESM (`"type": "module"`), types inclus. React est une dépendance peer optionnelle — importez le cœur sans lui.
+
+## Carte des sous-chemins
+
+| Import | Expose |
+| --- | --- |
+| `takumi-motion` | Tout : moteur central (timelines, compilation, évaluation, ressorts, easings, couleur), renderers (`renderBanner`, `renderReactBanner`, `renderStill`, …), le ré-export du runtime React, audit, polices, thèmes, presets, templates, lint, surface, concurrence, storyboard, filmstrip, kit |
+| `takumi-motion/react` | La surface d'authoring : primitives (`Banner`, `Scene`, `Layer`), séquencement (`Sequence`, `Freeze`, `Series`, `Loop`), hooks, math de mouvement, `SplitText`, `Fill`/`Img`/`FitText`, pack matériel, charts, `<Morph>`, `<Particles>`, `<Animated>`/`<Keyframes>`, `<Camera>`/`<Wiggle>`/`<FollowPath>`, vocabulaire enter/exit, `chain`/`hold`, système de cues, canal de données |
+| `takumi-motion/audit` | `renderWithAudit` + types d'audit — le contrat d'embeddabilité pour les plateformes rendant des bannières utilisateur |
+| `takumi-motion/fonts` | `ensureFonts`, `fontCatalog`, `fontStack`, `isCatalogFont`, `loadedFontFamilies` |
+| `takumi-motion/recipes` | Les quatre constructeurs de templates, `bannerTemplates`, `buildTemplate` |
+| `takumi-motion/kit` | `CountUp`, `Typewriter`, `Glow` + helpers de pattern numérique |
+
+Le binaire est `takumi-motion` (`package.json` → `bin`), mappé sur la CLI compilée.
+
+## Exigences de runtime
+
+| Exigence | Détail |
+| --- | --- |
+| Node.js | 22+ (développé contre 24) |
+| Moteur | `@takumi-rs/core` ≥ 2.17 (peer `@takumi-rs/helpers` ≥ 2.17.0) — le rasteriseur Rust arrive comme module natif précompilé |
+| React | 19 (peer optionnel) |
+| Polices | takumi embarque Geist Latin par défaut ; enregistrez tout autre via l'API fonts |
+
+## Types à connaître
+
+| Type | Forme |
+| --- | --- |
+| `TimelineJSON` | `{ version: 1, durationMs, tracks: TrackJSON[], wrap? }` — le format d'échange |
+| `AnimationFormat` | `"gif" \| "webp" \| "apng"` |
+| `BannerPreset` | Une recette de surface complète (width, height, dpr, fps, formats, quality, budget) |
+| `SurfaceSpec` | `{ width, height, dpr, fps, formats, quality, lossless, background, budgetBytes }` |
+| `TakumiStyle` | Le set typé et vérifié par le moteur de propriétés de style (`+` props personnalisées explicites `--*`) |
+| `LintWarning` | `{ code, message, hint?, severity }` |
+| `ReactBannerReport` | Le rapport de rendu complet — voir [Renderers et rapports](/reference/renderers) |
+
+<Aside type="note">
+  Importez les types avec `import type { TimelineJSON } from "takumi-motion"` — la surface de types fait partie du contrat public et est versionnée avec le journal de modification.
+</Aside>
+
+## Étapes suivantes
+
+<LinkCard title="API du moteur central" href="/reference/core-engine" description="Les fonctions derrière l'export racine." />
+
+<LinkCard title="Composants React" href="/reference/react-components" description="La surface d'authoring derrière l'export /react." />

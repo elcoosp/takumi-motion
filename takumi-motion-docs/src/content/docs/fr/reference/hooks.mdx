@@ -1,0 +1,81 @@
+---
+title: Hooks et math de mouvement
+description: "Hooks de contexte de frame et leurs compagnons purs sans hook — springs, interpolation, pulses, noise et stagger."
+type: reference
+---
+
+import { Aside, LinkCard } from '@astrojs/starlight/components';
+
+Les hooks lisent le contexte de frame à l'intérieur d'un `<Scene>` (ils jettent en dehors). Chaque hook a un compagnon pur — la même math prenant la frame explicitement — importable depuis l'export racine pour usage hors React.
+
+## Contexte de frame
+
+| Hook | Renvoie |
+| --- | --- |
+| `useFrame()` | `FrameInfo { frame, absolute, sceneFrames, bannerFrames, fps, timeMs }` |
+| `useCurrentFrame()` | Frame locale à la scène (redémarre par scène) |
+| `useAbsoluteFrame()` | Frame globale de la bannière |
+| `useDuration()` | Durée en frames de la scène courante |
+| `useFps()` | fps de la bannière |
+| `useCue(expr)` | Frame absolue pour une expression de cue : `"intro"`, `"intro+12f"` (les scènes ont besoin d'un `label`) |
+
+## Ressorts et interpolation
+
+| Hook | Signature | Renvoie |
+| --- | --- | --- |
+| `useSpring` | `(options?: SpringAtOptions) => number` | Ressort échantillonné à la frame courante |
+| `useStaggeredSpring` | `(index, options?: StaggeredSpringOptions) => number` | Ressort retardé de `startFrames + index × intervalFrames` (défauts 0/2) |
+| `useInterpolate` | `(inputFrames, output, easing?) => number` | Mapping multi-stop easé, borné |
+| `usePulse` | `(periodFrames) => number` | Triangle 0→1→0, aligné sur la frame |
+| `useSmoothPulse` | `(periodFrames) => number` | Sinus 0→1→0 |
+
+Les options de ressort portent le vocabulaire complet de Motion : `stiffness` (100), `damping` (10), `mass` (1), `duration` (800), `bounce` (0.3), `visualDuration`, `velocity`, `restSpeed`, `restDelta`, `overshootClamping`, plus `from` (0), `to` (1), `delayFrames` (0).
+
+Les champs de `SpringAtOptions` peuvent être des fonctions de l'index de frame pour le retargeting par frame.
+
+## Compagnons purs (export racine)
+
+| Fonction | Signature | Notes |
+| --- | --- | --- |
+| `springFor` | `(frame, fps, options) => number` | Solveur mémoïsé (v1.0 Velocity) |
+| `interpolateFor` | `(frame, inputFrames, output, easing?) => number` | `useInterpolate` sans hook |
+| `interpolate` | `(input, inputRange, outputRange, { easing?, extrapolateLeft?, extrapolateRight? })` | Mapping signature Remotion ; monotone, plages de longueur égale |
+| `pulseFor` / `smoothPulseFor` | `(frame, periodFrames) => number` | Pulses sans hook |
+| `randomFor` | `(seed, ...salt) => number` | Valeur dérivée de mulberry32 dans `[0, 1)`, stable par (seed, salt) |
+| `noiseFor` | `(seed, options?) => number` | Bruit de valeur 2D en ± amplitude (amp 1, fréquence 0.1) |
+| `staggerDelay` / `staggeredSpringFor` | `(index, ...) => ...` | Stagger sans hook |
+| `springPresets` | `snappy`, `bouncy`, `gentle`, `wobbly`, `stiff`, `slow` | Étalez dans n'importe quel ressort : `useSpring({ ...springPresets.snappy, from: 24 })` |
+| `springSettleFrames` | `(fps, options) => number` | Frames jusqu'au repos du ressort — `Infinity` pour les configs absurdes |
+| `wiggleFor` | `(seed, frame, { amplitude=4, frequency=0.15 }) => number` | `<Wiggle>` sans hook |
+| `frameToMs` / `msToFrames` | `(n, fps) => number` | `msToFrames` arrondit vers le haut |
+| `mulberry32` | `(seed) => () => number` | Le PRNG amorcé qui sous-tend toute la randomisation |
+| `hashString` | `(s) => number` | Chaîne → graine numérique |
+
+## État et données
+
+| Hook | Signature | Notes |
+| --- | --- | --- |
+| `useFrameState` | `(reducer, initial, events?) => S` | État rejoué depuis la frame 0 à chaque rendu — le reducer doit être déterministe ; `events(frame)` renvoie des actions ou null |
+| `useChartData` | `<T>(hint?) => T` | L'objet de données de la bannière ; jette avec un hint de clé quand absent |
+| `hasChartData` | `() => boolean` | Vérification silencieuse |
+| `useEntering` / `useExiting` | `(descriptor) => { opacity?, transform? } \| null` | `null` = reposé = n'émet rien |
+
+## Noms canoniques, intentionnellement distincts
+
+| Objet | Canonique | Sucre hook | Compagnon pur |
+| --- | --- | --- | --- |
+| Mapping de plage de frames | `interpolate(frame, in, out, { easing })` | `useInterpolate(in, out, easing?)` | `interpolateFor(frame, in, out, easing?)` |
+| Ressort | `useSpring(options)` | — | `springFor(frame, fps, options)` |
+| Stagger | `useStaggeredSpring(index, opts)` | — | `staggeredSpringFor(...)` |
+
+Les trois variantes d'interpolate sont intentionnellement distinctes : sans contexte vs lisant le contexte. Préférez `interpolate` pour le nouveau code.
+
+<Aside type="caution">
+  N'appelez jamais `Math.random()` dans une fonction de rendu. Utilisez `useRandom`/`randomFor` (amorcés) — c'est ce qui fait que les frames rejouent octet-identiquement et ce qui permet aux fenêtres de workers de fusionner octet-exactement.
+</Aside>
+
+## Étapes suivantes
+
+<LinkCard title="Composants React" href="/reference/react-components" description="Les composants que ces hooks alimentent." />
+
+<LinkCard title="Déterminisme" href="/explanation/determinism" description="Pourquoi la randomisation amorcée et le temps moteur entier ne sont pas négociables." />

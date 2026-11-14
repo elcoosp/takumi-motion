@@ -1,0 +1,67 @@
+---
+title: Réduire la taille du fichier
+description: "Coupez des octets GIF et WebP avec l'échelle de budget, le collapse des holds, le X-ray et la doctrine de taille."
+type: how-to
+---
+
+import { Aside, Code, LinkCard, Steps } from '@astrojs/starlight/components';
+
+La taille encodée est delta par frame × frames. Tout dans ce guide attaque un de ces deux termes. Partez du rapport — il vous dit quel terme domine.
+
+## 1. Fixer un budget et laisser l'échelle fps travailler
+
+La CLI accepte un budget d'octets et négocie le frame rate pour vous :
+
+<Code lang="sh" code={`npx takumi-motion render banner.tsx --budget 800000 --out ./out`} />
+
+Quand le premier rendu dépasse le budget, l'échelle re-rend à 75 %, puis 50 % du fps (plancher 6 fps, format du premier preset) et garde la première tentative qui tient. La CLI sort avec `2` quand même l'échelle échoue — câblez cela dans la CI comme décrit dans [Portails de qualité](/guides/ci-quality-gates). Programmatiquement la même échelle est `optimizeBudget` depuis l'export racine.
+
+## 2. Lire le X-ray avant de deviner
+
+`--explain` (ou `explain: true` sur `renderReactBanner`) attache l'attribution par frame à `report.explain` : chaque frame est classée comme start, hold ou change, et chaque change est attribué à un canal — opacity, transform, clip, layout, paint, text ou structure :
+
+<Code lang="sh" code={`npx takumi-motion render banner.tsx --explain --json | jq .explain.summary`} />
+
+<Code lang="json" code={`{
+  "totalFrames": 180,
+  "uniqueFrames": 96,
+  "holds": 84,
+  "cheapFrames": 52,
+  "churnFrames": 44,
+  "churnRanges": [{ "from": 60, "to": 104 }]
+}`} />
+
+Les frames bon marché (opacity, clip) compressent bien. Les frames de churn (layout, text, structure) ré-encodent des régions entières — une plage de churn au milieu d'une scène statique est votre première cible.
+
+## 3. Appliquer les correctifs de la doctrine
+
+- **Préférez WebP pour le glow et les balayages de couleur.** Le dithering de palette des gradients doux est le piège de taille GIF principal — les GIFs de glow à 1× compressent moins bien que ceux à 2× dans les benchmarks du projet. Le lint `TM_GLOW_GIF_DITHER` se déclenche sur `filter: blur()` à dpr 1 en GIF.
+- **Laissez les holds se replier.** Les descripteurs d'animation au repos n'émettent aucune surcharge de style, donc les frames identiques fusionnent en holds à delta zéro — la passe GIF les réécrit comme délais de frame plus longs (`collapseGifHolds` est activé par défaut ; le bloc `collapse` du rapport montre les frames et octets économisés).
+- **Arrêtez le churn perpétuel.** Confetti sans `burstFrames`, champs de particules non bornés et ressorts qui ne se reposent jamais déclenchent `TM_PARTICLE_CHURN` et `TM_TRANSITION_UNSETTLED`. Les bursts finis sont la doctrine : un GIF qui ne s'arrête jamais de bouger ne compresse jamais.
+- **Corrigez les shifts de layout involontaires.** `TM_LAYOUT_SHIFT` nomme le frère coupable et le delta — les chiffres de comptage ont besoin de `tabular-nums` ou `minWidth`, les frères tardifs ont besoin d'espace réservé.
+- **Utilisez `--still` pour les surfaces statiques.** Quand la destination est une seule frame (aperçus de liens, avatars), `renderStill` émet un PNG au lieu d'une animation.
+
+## 4. Choisir la surface la plus légère qui marche
+
+| Preset | Taille | fps | Formats | Budget |
+| --- | --- | --- | --- | --- |
+| `readme-lean` | 850×200 | 12 | gif | 1,25 Mio |
+| `readme` | 850×200 | 20 | gif, webp | 2 Mio |
+| `readme-hd` | 850×200 | 20 | webp (dpr 2) | 2 Mio |
+| `readme-profile` | 850×300 | 20 | gif, webp | 2,25 Mio |
+| `readme-wide` | 1280×300 | 20 | gif, webp | 3 Mio |
+| `og-card` | 1200×630 | 20 | gif, webp | 4 Mio |
+
+Passez à `readme-lean` quand la plateforme hôte re-compresse votre asset de toute façon. Pour les workflows sprite-sheet ou frame-sequence, l'heuristique min-SAD de l'encodeur PNG a déjà coupé les octets d'atlas de 90 %+ dans la passe v1.0 — voir [Performance et taille](/explanation/performance-and-size).
+
+<Aside type="note">
+  Les balayages de couleur OKLCH à forte chroma sur de grandes zones dithering en bruit de palette dans les GIFs à dpr 1. L'API de couleur perceptuelle reste la bonne surface d'authoring — associez-la à WebP quand le design demande des lavis vifs.
+</Aside>
+
+## Étapes suivantes
+
+<LinkCard title="Performance et taille" href="/explanation/performance-and-size" description="Pourquoi le moteur est rapide et où les octets sont allés." />
+
+<LinkCard title="Codes de lint" href="/reference/lint-codes" description="Chaque avertissement lié à la taille et son correctif." />
+
+<LinkCard title="Presets, thèmes et polices" href="/reference/presets-and-themes" description="Dimensions de presets, budgets et surcharges." />

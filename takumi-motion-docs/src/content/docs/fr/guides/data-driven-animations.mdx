@@ -1,0 +1,84 @@
+---
+title: Animations pilotées par les données
+description: "Injectez des données statiques au setup et rendez des graphiques déterministes, des count-ups et des stats — aucun fetch réseau au rendu."
+type: how-to
+---
+
+import { Aside, Code, LinkCard, Steps } from '@astrojs/starlight/components';
+
+Utilisez ce guide quand une bannière doit visualiser des nombres — étoiles, revenu, latence, couverture. Le canal de données injecte un objet JSON au setup ; rien n'est fetché pendant que les frames rendent, ce qui garde la sortie reproductible octet pour octet.
+
+## La règle : les données entrent au setup, jamais au rendu
+
+Un fetch réseau à l'intérieur d'une fonction de rendu est une violation du déterminisme. Les lectures de fichier sont OK — ce sont des entrées immuables. Passez les données programmatiquement ou via la CLI :
+
+<Code lang="ts" code={`const report = await renderReactBanner({
+    banner: MetricsReel,
+    data: metricsJson,
+});`} />
+
+<Code lang="sh" code={`npx takumi-motion render metrics-reel.tsx --data metrics.json --format webp`} />
+
+Dans l'arbre de composants, lisez l'objet n'importe où avec `useChartData` :
+
+<Code lang="tsx" code={`import { useChartData } from "takumi-motion/react";
+
+function Headline() {
+    const data = useChartData<{ stars: number }>();
+    return <span>{data.stars.toLocaleString("en-US")} stars</span>;
+}`} />
+
+`useChartData(hint?)` jette avec un hint listant les clés enregistrées quand aucun canal n'existe ; appelez `hasChartData()` quand vous avez besoin d'une vérification silencieuse.
+
+## Rendre un graphique en ligne
+
+`<LineChart>` construit un seul SVG statique, puis balaie un `clip-path: inset()` par frame dessus — ce reveal par clip est le moteur de dessin :
+
+<Code lang="tsx" code={`<LineChart
+    data={{ series: [{ name: "rps", color: "#7aa2f7", points: [12, 30, 28, 55, 61, 80] }], labels: ["Jan", "Feb", "Mar"] }}
+    draw="reveal"
+    area
+    grid
+    showPoints
+/>`} />
+
+Props clés : `draw="none"` rend le graphique fini (pour les stills), `drawDurationFrames`/`drawDelayFrames` contrôlent le balayage, et `yTicks` règle la densité des lignes de grille. Les données peuvent arriver via les props ou le canal — omettez la prop `data` et le graphique lit `useChartData` lui-même.
+
+## Rendre des barres et des donuts
+
+`<BarChart>` fait grandir les barres avec des ressorts à forme fermée décalés ; `<Donut>` balaie un arc de valeur :
+
+<Code lang="tsx" code={`<BarChart
+    data={{ series: [{ name: "downloads", color: "#DF4D24", points: [820, 1240, 980, 1610] }] }}
+    orientation="up"
+    stagger
+    showValues
+/>
+
+<Donut value={0.83} size={140} color="#7aa2f7">
+    <span style={{ fontSize: 24 }}>83%</span>
+</Donut>`} />
+
+`<Donut>` valide `value` dans la plage `[0, 1]`. Le balayage `paint="transform"` par défaut est sûr pour la palette GIF ; `paint="conic"` est l'alternative en dégradé mais déclenche le lint de dithering GIF sur les surfaces 1×.
+
+## Count-up avec colonnes de chiffres stables
+
+`<CountUp>` accepte un pattern `format` — analysé une fois, rendu avec `tabular-nums` forcé, donc les colonnes de chiffres ne reflowent jamais les voisins :
+
+<Code lang="tsx" code={`<CountUp to={4200} durationFrames={40} delayFrames={6} format="$,.0f" />
+<CountUp to={0.962} format=",.1f%" />
+<CountUp to={37} format="ms" />`} />
+
+Grammaire du pattern : `[prefix][, grouping][.Nf decimals][suffix]`. Les formateurs fonctionnels marchent encore : `format={(v) => \`${Math.round(v).toLocaleString("en-US")}+ stars\`}`.
+
+<Aside type="caution">
+  Les chiffres du comptage changent de largeur à chaque frame. Sans `tabular-nums` (appliqué automatiquement) ou `minWidth` sur les layouts personnalisés, les éléments voisins se décalent et déclenchent `TM_LAYOUT_SHIFT`.
+</Aside>
+
+## Étapes suivantes
+
+<LinkCard title="Composants React" href="/reference/react-components" description="Tables de props complètes pour LineChart, BarChart, Donut et CountUp." />
+
+<LinkCard title="Réduire la taille du fichier" href="/guides/reduce-file-size" description="Le churn de count-up est du territoire WebP — lisez le rapport et agissez dessus." />
+
+<LinkCard title="Boucles sans jointure" href="/guides/seamless-loops" description="Faites boucler les reels de données à l'infini sans jointure visible." />

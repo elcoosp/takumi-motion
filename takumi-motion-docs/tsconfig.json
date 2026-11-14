@@ -1,8 +1,25 @@
 {
   "extends": "astro/tsconfigs/strict",
-  "include": [".astro/types.d.ts", "**/*"],
-  "exclude": ["dist", "node_modules"],
+  "include": [
+    ".astro/types.d.ts",
+    "**/*"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ],
   "compilerOptions": {
-    "types": ["astro/client"]
+    "types": [
+      "astro/client"
+    ],
+    "skipLibCheck": true,
+    "paths": {
+      "starlight-view-modes": [
+        "node_modules/@elcoosp/docs-toolkit/src/stubs/starlight-view-modes.d.ts"
+      ],
+      "starlight-telescope": [
+        "node_modules/@elcoosp/docs-toolkit/src/stubs/starlight-telescope.d.ts"
+      ]
+    }
   }
 }

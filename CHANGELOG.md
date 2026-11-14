@@ -1,5 +1,37 @@
 # takumi-motion — CHANGELOG
 
+## [1.2.0](https://github.com/elcoosp/takumi-motion/compare/v1.1.0...v1.2.0) (2026-11-14)
+
+
+### Features
+
+* **docs:** add precise French sidebar translations ([ebeb2dc](https://github.com/elcoosp/takumi-motion/commit/ebeb2dc0856d6634fb9c20ad9c5fa56464910667))
+* **docs:** complete French sidebar translations ([ee90625](https://github.com/elcoosp/takumi-motion/commit/ee9062554ef81f80e785fdcff0dc056d2bfaa32c))
+* final toolkit sync (auto-expiring announcements, exact anchors) ([1197d95](https://github.com/elcoosp/takumi-motion/commit/1197d9552d79c68f7c6adfe1829fb45c03b3e45d))
+* **i18n:** add complete French translations ([eb5d54d](https://github.com/elcoosp/takumi-motion/commit/eb5d54d33e2f6b787edcab404bb65b8c512ce61d))
+
+
+### Bug Fixes
+
+* **content:** add blogSchema to docs schema ([aa5e781](https://github.com/elcoosp/takumi-motion/commit/aa5e781b7ffe553c58144fc26c48ebdfb6693376))
+* **docs:** allow astro-takumi git dependency build scripts ([3510e86](https://github.com/elcoosp/takumi-motion/commit/3510e862ffdf074cf3b65bdfa6440d6de6ae03ad))
+* **docs:** correct misplaced quotes in sidebar label ([0d4d895](https://github.com/elcoosp/takumi-motion/commit/0d4d895bab279371bf2fa12bd9a5385edbd0b6da))
+* **docs:** direct validator dep + dead-path links → canonical (no redirects) ([dbb8406](https://github.com/elcoosp/takumi-motion/commit/dbb8406f015a6791b2ec63a279772f19365dc926))
+* **docs:** exclude _meta.yml from docsMetadata glob; strip stale refs ([0cfde3d](https://github.com/elcoosp/takumi-motion/commit/0cfde3d9aa047a58f078f682d7d1150cd6ae1ace))
+* **docs:** remove dangling syntax from astro config ([c88d502](https://github.com/elcoosp/takumi-motion/commit/c88d50233dddbeca5e6c6f034e5e8e064bd5b037))
+* **docs:** resolve syntax errors and finalize DRY i18n setup ([ef62e5f](https://github.com/elcoosp/takumi-motion/commit/ef62e5fc4d5c0e3dbab21cfd267d32c9b9f4aae0))
+* **docs:** restore i18nLoader import and prebuild copy step ([d6ff440](https://github.com/elcoosp/takumi-motion/commit/d6ff440d1705e55e6eff5490ae8f2e1f4ade6b36))
+* **docs:** use allowBuilds map for pnpm 12 build scripts ([c2eeb93](https://github.com/elcoosp/takumi-motion/commit/c2eeb9399d2889c14707c119e85a75cee73a261c))
+* **docs:** use correct symlink for i18n and translate sidebar to French ([b0c4e18](https://github.com/elcoosp/takumi-motion/commit/b0c4e181eb94fb369306f8739c0b1c801ae9388e))
+* **pnpm:** exact tarball URL in allowBuilds (pnpm 11 compat) ([b4b7c9c](https://github.com/elcoosp/takumi-motion/commit/b4b7c9ca57e3db4010ca64b275b2ba019a650a4f))
+* **pnpm:** pin pnpm 11.24.0, fix allowBuilds for Vercel ([1e7cdd4](https://github.com/elcoosp/takumi-motion/commit/1e7cdd4523eef745dcb4db02140def22b0986143))
+* **pnpm:** use git+https repo URL in allowBuilds for pnpm 11+ parser ([40ae3b3](https://github.com/elcoosp/takumi-motion/commit/40ae3b37a72b1d4ff663f310644ce6dd71b30481))
+* **pnpm:** use package name for allowBuilds to resolve Vercel pnpm 10 error ([9490697](https://github.com/elcoosp/takumi-motion/commit/9490697462d9f417b884b26e859a2824cb69f380))
+* point starlight-changelogs to ../CHANGELOG.md ([9057507](https://github.com/elcoosp/takumi-motion/commit/905750719b7ec52abde13f6653d8734b7bb4d2b7))
+* **seo:** bump ^0.8.7 + blog date ([4be7603](https://github.com/elcoosp/takumi-motion/commit/4be7603e97ae244625fd8d2dfd02cd3144ee816f))
+* **seo:** final description + title tuning ([6c2f1a4](https://github.com/elcoosp/takumi-motion/commit/6c2f1a412794d6cdffbbaeccddbd6d19adf36912))
+* **vercel:** remove rootDirectory from vercel.json, keep installCommand ([db350cc](https://github.com/elcoosp/takumi-motion/commit/db350cc3af8b3ebb051655824c0867973898acfb))
+
 ## [1.1.0](https://github.com/elcoosp/takumi-motion/compare/v1.0.6...v1.1.0) (2026-11-11)
 
 

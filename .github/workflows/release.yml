@@ -12,5 +12,4 @@ permissions:
 jobs:
   call-release-workflow:
     uses: elcoosp/docs-toolkit/.github/workflows/release-please.yml@main
-    secrets:
-      RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+    secrets: inherit

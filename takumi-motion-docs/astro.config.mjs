@@ -8,9 +8,6 @@ export default await defineDocsConfig({
   description: "Deterministic server-side animation engine: any React component or raw HTML string becomes a GIF, WebP, APNG, PNG sequence, sprite sheet, or still — rendered by the Rust takumi engine, byte-identical on every run.",
   sidebar: [],
   extraStarlight: {
-      expressiveCode: {
-      	themes: ['github-light', 'github-dark']
-      },
       title: 'Takumi Motion',
       description:
         'Deterministic server-side animation engine: any React component or raw HTML string becomes a GIF, WebP, APNG, PNG sequence, sprite sheet, or still — rendered by the Rust takumi engine, byte-identical on every run.',

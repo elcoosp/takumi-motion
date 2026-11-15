@@ -1,0 +1,54 @@
+---
+title: Générer des bannières animées déterministes en Rust sans navigateur headless
+date: 2026-11-15
+cover:
+  alt: Architecture de Takumi Motion
+  image: ../../blog/welcome-cover.jpg
+image: ../../blog/welcome-cover.jpg
+---
+
+import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
+
+Générer des bannières README animées, des cartes sociales ou des aperçus de versions en CI oblige généralement à lancer un navigateur headless. Chromium entraîne un lourd surcoût de démarrage à froid, de subtiles différences de rendu de polices selon les machines et une dérive temporelle des images qui rend impossible toute mise en cache exacte à l'octet près.
+
+Nous avons conçu Takumi Motion (`1.1.0`) pour rendre des arbres React, des recettes déclaratives ou du HTML brut directement en GIF, WebP, APNG, feuilles de sprites et images fixes à l'aide d'un rastériseur Rust natif.
+
+## L'objectif
+
+Nous voulions un moteur d'animation où chaque image est une fonction pure de `(frame, props)` — produisant des octets de sortie strictement identiques, qu'ils soient rendus séquentiellement sur un ordinateur portable, répartis sur un pool de workers en CI ou audités dans un pipeline de publication.
+
+## L'architecture
+
+Takumi Motion relie une écriture de haut niveau (`takumi-motion/react`, `takumi-motion/recipes` ou HTML brut) à `@takumi-rs/core`, un module Rust natif précompilé de mise en page et de rastérisation, à travers un pipeline en six étapes (`AUTHOR`, `PLAN`, `CAPTURE`, `COMPILE`, `RASTER`, `ENCODE`).
+
+<CardGrid stagger>
+  <Card title="Rastérisation Rust native" icon="rocket">
+    Calcule la mise en page et dessine des arbres stylisés en CSS directement via `@takumi-rs/core` sans Chromium, rendant une bannière de 80 images de bout en bout en ~37 ms en séquentiel.
+  </Card>
+  <Card title="Déterminisme exact à l'octet près" icon="approve-check">
+    Impose un temps moteur en millisecondes entières (`toEngineMs`) et un générateur pseudo-aléatoire `mulberry32` initialisé par image afin que la capture parallèle sur workers corresponde octet pour octet aux exécutions séquentielles.
+  </Card>
+  <Card title="Préchauffage et regroupement d'images" icon="setting">
+    Exécute une passe de préchauffage ignorée par scène afin que `<FitText>` et `<Morph>` mesurent avec précision, puis fusionne les images adjacentes identiques avant l'encodage.
+  </Card>
+  <Card title="Portes qualité CI intégrées" icon="puzzle">
+    `takumi-motion check` et `renderWithAudit` font échouer les builds en cas de débordement du canevas, de raccords de boucle cassés, de dépassement de budget d'octets ou de rendus non déterministes.
+  </Card>
+</CardGrid>
+
+## Ce que cela a coûté
+
+Garantir une sortie identique à l'octet près entre les exécutions séquentielles et les workers parallèles imposait d'interdire tout effet de bord ambiant durant la capture. Les composants lisent `useFrame()` plutôt que `Date.now()`, `Math.random()` est isolé par index d'image et les ressorts analytiques exposent `springSettleFrames` afin que `TM_TRANSITION_UNSETTLED` détecte les animations qui dépassent la fenêtre de leur scène.
+
+<Aside type="caution" title="Limites">
+Comme aucun moteur de navigateur n'intervient dans le pipeline, Takumi Motion prend en charge un ensemble borné de propriétés CSS (`SUPPORTED_STYLE_PROPS`, vérifié par `TM_UNKNOWN_STYLE_PROP`) plutôt que des fonctionnalités DOM arbitraires comme WebGL, `<video>` ou `<canvas>`. Les polices doivent également être embarquées localement sous forme de fichiers TTF/OTF plutôt que récupérées sur le réseau (`TM_FONT_NETWORK`).
+</Aside>
+
+## Démarrer
+
+```bash
+pnpm add takumi-motion @takumi-rs/helpers
+pnpm exec takumi-motion check src/banners/readme.tsx
+```
+
+Suivez le [tutoriel de première bannière](/fr/tutorials/first-banner/) pour générer votre premier WebP déterministe, ou lisez le [guide d'architecture](/fr/explanation/architecture/) pour découvrir le cycle complet de capture.

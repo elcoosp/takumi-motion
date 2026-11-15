@@ -1,0 +1,54 @@
+---
+title: Rendering deterministic animated banners in Rust without a headless browser
+date: 2026-11-15
+cover:
+  alt: Takumi Motion Architecture
+  image: ./welcome-cover.jpg
+image: ./welcome-cover.jpg
+---
+
+import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
+
+Generating animated README banners, social cards, or release previews in CI usually means spinning up a headless browser. Chromium brings heavy cold-start overhead, subtle font-hinting differences across machines, and frame-timing drift that makes byte-exact caching impossible.
+
+We built Takumi Motion (`1.1.0`) to render React trees, declarative recipes, or raw HTML directly into GIF, WebP, APNG, sprite sheets, and stills using a native Rust rasterizer.
+
+## The Goal
+
+We wanted an animation engine where every frame is a pure function of `(frame, props)`—producing identical output bytes whether rendered serially on a laptop, across a worker pool in CI, or audited inside a publishing pipeline.
+
+## The Architecture
+
+Takumi Motion connects high-level authoring (`takumi-motion/react`, `takumi-motion/recipes`, or raw HTML) to `@takumi-rs/core`, a prebuilt native Rust layout and rasterization module, through a six-stage pipeline (`AUTHOR`, `PLAN`, `CAPTURE`, `COMPILE`, `RASTER`, `ENCODE`).
+
+<CardGrid stagger>
+  <Card title="Native Rust Rasterization" icon="rocket">
+    Lays out and paints CSS-styled trees directly via `@takumi-rs/core` without Chromium, rendering an 80-frame banner end-to-end in ~37 ms serial.
+  </Card>
+  <Card title="Byte-Exact Determinism" icon="approve-check">
+    Enforces whole-millisecond engine time (`toEngineMs`) and per-frame `mulberry32` seeded randomness so parallel worker capture matches serial runs byte for byte.
+  </Card>
+  <Card title="Prewarm & Frame Chunking" icon="setting">
+    Runs a discarded prewarm pass per scene so `<FitText>` and `<Morph>` measure accurately, then merges adjacent identical frames before encoding.
+  </Card>
+  <Card title="Built-In CI Quality Gates" icon="puzzle">
+    `takumi-motion check` and `renderWithAudit` fail builds on canvas extent overflows, broken loop seams, byte budgets, or non-deterministic renders.
+  </Card>
+</CardGrid>
+
+## What it cost
+
+Guaranteeing byte-identical output across serial and parallel worker runs meant banning ambient side effects during capture. Components read `useFrame()` instead of `Date.now()`, `Math.random()` is shimmed per frame index, and analytical springs expose `springSettleFrames` so `TM_TRANSITION_UNSETTLED` catches animations that outlive their scene window.
+
+<Aside type="caution" title="Limitations">
+Because there is no browser engine in the pipeline, Takumi Motion supports a bounded CSS property set (`SUPPORTED_STYLE_PROPS`, checked by `TM_UNKNOWN_STYLE_PROP`) rather than arbitrary browser DOM features like WebGL, `<video>`, or `<canvas>` elements. Fonts must also be vendored locally as TTF/OTF files rather than fetched over the network (`TM_FONT_NETWORK`).
+</Aside>
+
+## Getting started
+
+```bash
+pnpm add takumi-motion @takumi-rs/helpers
+pnpm exec takumi-motion check src/banners/readme.tsx
+```
+
+Follow the [first banner tutorial](/tutorials/first-banner/) to render your first deterministic WebP, or read the [architecture guide](/explanation/architecture/) for the full capture lifecycle.

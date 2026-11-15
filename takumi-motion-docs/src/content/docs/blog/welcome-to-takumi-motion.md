@@ -4,6 +4,7 @@ date: 2026-11-12T00:00:00Z
 cover:
   alt: Takumi-motion Logo
   image: ./logo.png
+image: ./welcome-cover.jpg
 ---
 
 Welcome to the official blog for **Takumi-motion**!

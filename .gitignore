@@ -4,3 +4,7 @@ wr.sh
 dist
 .vercel
 .env*
+
+# Build-time backups
+*.bak
+*.orig

@@ -2,8 +2,8 @@
 title: Welcome to the Takumi-motion Blog
 date: 2026-11-12T00:00:00Z
 cover:
-  alt: Takumi-motion Logo
-  image: ./logo.png
+  alt: Welcome Cover
+  image: ./welcome-cover.jpg
 image: ./welcome-cover.jpg
 ---
 

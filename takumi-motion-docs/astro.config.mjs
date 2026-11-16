@@ -1,5 +1,6 @@
 import { defineDocsConfig } from '@elcoosp/docs-toolkit/config';
 export default await defineDocsConfig({
+  topics: true,
   llmsTxt: {},
   site: 'https://takumi-motion.vercel.app',
   domain: 'takumi-motion.vercel.app',

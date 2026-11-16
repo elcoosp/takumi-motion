@@ -44,7 +44,7 @@ Props clés : `draw="none"` rend le graphique fini (pour les stills), `drawDurat
 
 <Code lang="tsx" code={"<CountUp to={4200} durationFrames={40} delayFrames={6} format=\"$,.0f\" />\n<CountUp to={0.962} format=\",.1f%\" />\n<CountUp to={37} format=\"ms\" />"} />
 
-Grammaire du pattern : `[prefix][, grouping][.Nf decimals][suffix]`. Les formateurs fonctionnels marchent encore : `format={(v) => \`${Math.round(v).toLocaleString("en-US")}+ stars\`}`.
+Grammaire du pattern : `[prefix][, grouping][.Nf decimals][suffix]`. Les formateurs fonctionnels marchent encore : ``format={(v) => `${Math.round(v).toLocaleString("en-US")}+ stars`}``.
 
 <Aside type="caution">
   Les chiffres du comptage changent de largeur à chaque frame. Sans `tabular-nums` (appliqué automatiquement) ou `minWidth` sur les layouts personnalisés, les éléments voisins se décalent et déclenchent `TM_LAYOUT_SHIFT`.

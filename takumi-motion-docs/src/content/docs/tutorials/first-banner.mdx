@@ -18,20 +18,20 @@ In this tutorial you build and render a React banner — the golden path for pro
 
 Create an empty directory and initialize a package:
 
-<Code lang="sh" code={`mkdir my-banner && cd my-banner
+<Code lang="sh" title="Terminal" code={`mkdir my-banner && cd my-banner
 pnpm init`} />
 
 Install `takumi-motion`:
 
 <Tabs>
   <TabItem label="pnpm">
-<Code lang="sh" code={` pnpm add takumi-motion`} />
+<Code lang="sh" title="Terminal" code={` pnpm add takumi-motion`} />
   </TabItem>
   <TabItem label="npm">
-<Code lang="sh" code={` npm add takumi-motion`} />
+<Code lang="sh" title="Terminal" code={` npm add takumi-motion`} />
   </TabItem>
   <TabItem label="yarn">
-<Code lang="sh" code={` yarn add takumi-motion`} />
+<Code lang="sh" title="Terminal" code={` yarn add takumi-motion`} />
   </TabItem>
 </Tabs>
 
@@ -45,7 +45,7 @@ A banner is a React component wrapped in `defineBanner`. Inside it, a `<Banner>`
 
 Create a file named `launch-banner.tsx`:
 
-<Code lang="tsx" code={`import { defineBanner, Banner, Scene, Layer } from "takumi-motion/react";
+<Code lang="tsx" title="launch-banner.tsx" code={`import { defineBanner, Banner, Scene, Layer } from "takumi-motion/react";
 import { renderReactBanner } from "takumi-motion";
 
 export const launchBanner = defineBanner(function TakumiMotionLaunch() {
@@ -94,7 +94,7 @@ Three details carry the design:
 
 Run the file with Node:
 
-<Code lang="sh" code={`node launch-banner.tsx`} />
+<Code lang="sh" title="Terminal" code={`node launch-banner.tsx`} />
 
 The command prints a report and writes `./out/launch-banner.webp`:
 
@@ -123,7 +123,7 @@ A non-empty `report.lint` does not fail the render. It tells you what will cost 
 
 The same banner renders from the terminal without writing a driver script:
 
-<Code lang="sh" code={`npx takumi-motion render launch-banner.tsx --out ./out`} />
+<Code lang="sh" title="Terminal" code={`npx takumi-motion render launch-banner.tsx --out ./out`} />
 
 The CLI accepts `--format gif,webp`, `--budget 800000`, `--filmstrip`, and more — every flag is documented in the [CLI reference](/reference/cli).
 

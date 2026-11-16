@@ -12,7 +12,7 @@ Encoded size is per-frame delta × frames. Everything in this guide attacks one 
 
 The CLI accepts a byte budget and negotiates frame rate for you:
 
-<Code lang="sh" code={`npx takumi-motion render banner.tsx --budget 800000 --out ./out`} />
+<Code lang="sh" title="Terminal" code={`npx takumi-motion render banner.tsx --budget 800000 --out ./out`} />
 
 When the first render exceeds the budget, the ladder re-renders at 75%, then 50% of the fps (floor 6 fps, first preset format) and keeps the first attempt that fits. The CLI exits `2` when even the ladder fails — wire that into CI as described in [Quality Gates](/guides/ci-quality-gates). Programmatically the same ladder is `optimizeBudget` from the root export.
 
@@ -20,7 +20,7 @@ When the first render exceeds the budget, the ladder re-renders at 75%, then 50%
 
 `--explain` (or `explain: true` on `renderReactBanner`) attaches per-frame attribution to `report.explain`: every frame is classified as a start, hold, or change, and each change is attributed to a channel — opacity, transform, clip, layout, paint, text, or structure:
 
-<Code lang="sh" code={`npx takumi-motion render banner.tsx --explain --json | jq .explain.summary`} />
+<Code lang="sh" title="Terminal" code={`npx takumi-motion render banner.tsx --explain --json | jq .explain.summary`} />
 
 <Code lang="json" code={`{
   "totalFrames": 180,

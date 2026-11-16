@@ -12,7 +12,7 @@ La taille encodée est delta par frame × frames. Tout dans ce guide attaque un 
 
 La CLI accepte un budget d'octets et négocie le frame rate pour vous :
 
-<Code lang="sh" code={`npx takumi-motion render banner.tsx --budget 800000 --out ./out`} />
+<Code lang="sh" title="Terminal" code={`npx takumi-motion render banner.tsx --budget 800000 --out ./out`} />
 
 Quand le premier rendu dépasse le budget, l'échelle re-rend à 75 %, puis 50 % du fps (plancher 6 fps, format du premier preset) et garde la première tentative qui tient. La CLI sort avec `2` quand même l'échelle échoue — câblez cela dans la CI comme décrit dans [Portails de qualité](/guides/ci-quality-gates). Programmatiquement la même échelle est `optimizeBudget` depuis l'export racine.
 
@@ -20,7 +20,7 @@ Quand le premier rendu dépasse le budget, l'échelle re-rend à 75 %, puis 50 %
 
 `--explain` (ou `explain: true` sur `renderReactBanner`) attache l'attribution par frame à `report.explain` : chaque frame est classée comme start, hold ou change, et chaque change est attribué à un canal — opacity, transform, clip, layout, paint, text ou structure :
 
-<Code lang="sh" code={`npx takumi-motion render banner.tsx --explain --json | jq .explain.summary`} />
+<Code lang="sh" title="Terminal" code={`npx takumi-motion render banner.tsx --explain --json | jq .explain.summary`} />
 
 <Code lang="json" code={`{
   "totalFrames": 180,

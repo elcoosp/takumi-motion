@@ -17,7 +17,7 @@ A network fetch inside a render function is a determinism violation. File reads 
     data: metricsJson,
 });`} />
 
-<Code lang="sh" code={`npx takumi-motion render metrics-reel.tsx --data metrics.json --format webp`} />
+<Code lang="sh" title="Terminal" code={`npx takumi-motion render metrics-reel.tsx --data metrics.json --format webp`} />
 
 Inside the component tree, read the object anywhere with `useChartData`:
 

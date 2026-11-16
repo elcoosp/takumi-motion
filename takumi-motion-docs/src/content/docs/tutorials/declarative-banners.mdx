@@ -17,7 +17,7 @@ Not every banner needs a component tree. Takumi Motion ships four deterministic 
 
 Templates are functions that return a `BannerResult` — an element plus a compiled-ready timeline. Create `release-banner.ts`:
 
-<Code lang="ts" code={`import { gradientSweepBanner, renderBanner } from "takumi-motion";
+<Code lang="ts" title="release-banner.ts" code={`import { gradientSweepBanner, renderBanner } from "takumi-motion";
 
 const result = await gradientSweepBanner({
     title: "v2.4 — no more cold starts",
@@ -37,7 +37,7 @@ console.log(report.totalBytes, report.overBudget);`} />
 
 Run it:
 
-<Code lang="sh" code={`node release-banner.ts`} />
+<Code lang="sh" title="Terminal" code={`node release-banner.ts`} />
 
 You get `./out/release.gif` and `./out/release.webp` plus a poster PNG. The template bakes a strict loop seam, so the animation repeats without a visible cut.
 
@@ -60,7 +60,7 @@ Each template adds its own props — for example `typewriter` takes `text`, `tag
 
 The `render` command loads a module and renders whatever it exports — a template result, an element-plus-timeline object, or a sync/async function returning either. Create `banner-cli.ts`:
 
-<Code lang="ts" code={`import { cascadeBanner } from "takumi-motion/recipes";
+<Code lang="ts" title="banner-cli.ts" code={`import { cascadeBanner } from "takumi-motion/recipes";
 
 export default await cascadeBanner({
     title: "takumi-motion",
@@ -72,10 +72,10 @@ Then render it from the terminal:
 
 <Tabs>
   <TabItem label="pnpm">
-<Code lang="sh" code={` pnpm exec takumi-motion render banner-cli.ts --preset readme-wide --out ./out`} />
+<Code lang="sh" title="Terminal" code={` pnpm exec takumi-motion render banner-cli.ts --preset readme-wide --out ./out`} />
   </TabItem>
   <TabItem label="npx">
-<Code lang="sh" code={` npx takumi-motion render banner-cli.ts --preset readme-wide --out ./out`} />
+<Code lang="sh" title="Terminal" code={` npx takumi-motion render banner-cli.ts --preset readme-wide --out ./out`} />
   </TabItem>
 </Tabs>
 
@@ -85,7 +85,7 @@ The loader resolves, in order: the module's default export, a `banner` export, t
 
 The `--kit` flag renders a banner across several presets plus a static reduced-motion twin — the complete asset set for a project README:
 
-<Code lang="sh" code={`pnpm exec takumi-motion render banner-cli.ts --kit --out ./assets`} />
+<Code lang="sh" title="Terminal" code={`pnpm exec takumi-motion render banner-cli.ts --kit --out ./assets`} />
 
 Programmatically, the same call is `renderKit`:
 

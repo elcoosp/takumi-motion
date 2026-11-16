@@ -18,20 +18,20 @@ Dans ce tutoriel vous construisez et rendez une bannière React — le chemin do
 
 Créez un répertoire vide et initialisez un paquet :
 
-<Code lang="sh" code={`mkdir my-banner && cd my-banner
+<Code lang="sh" title="Terminal" code={`mkdir my-banner && cd my-banner
 pnpm init`} />
 
 Installez `takumi-motion` :
 
 <Tabs>
   <TabItem label="pnpm">
-<Code lang="sh" code={` pnpm add takumi-motion`} />
+<Code lang="sh" title="Terminal" code={` pnpm add takumi-motion`} />
   </TabItem>
   <TabItem label="npm">
-<Code lang="sh" code={` npm add takumi-motion`} />
+<Code lang="sh" title="Terminal" code={` npm add takumi-motion`} />
   </TabItem>
   <TabItem label="yarn">
-<Code lang="sh" code={` yarn add takumi-motion`} />
+<Code lang="sh" title="Terminal" code={` yarn add takumi-motion`} />
   </TabItem>
 </Tabs>
 
@@ -45,7 +45,7 @@ Une bannière est un composant React enveloppé dans `defineBanner`. À l'intér
 
 Créez un fichier nommé `launch-banner.tsx` :
 
-<Code lang="tsx" code={`import { defineBanner, Banner, Scene, Layer } from "takumi-motion/react";
+<Code lang="tsx" title="launch-banner.tsx" code={`import { defineBanner, Banner, Scene, Layer } from "takumi-motion/react";
 import { renderReactBanner } from "takumi-motion";
 
 export const launchBanner = defineBanner(function TakumiMotionLaunch() {
@@ -94,7 +94,7 @@ Trois détails portent la conception :
 
 Exécutez le fichier avec Node :
 
-<Code lang="sh" code={`node launch-banner.tsx`} />
+<Code lang="sh" title="Terminal" code={`node launch-banner.tsx`} />
 
 La commande imprime un rapport et écrit `./out/launch-banner.webp` :
 
@@ -123,7 +123,7 @@ Un `report.lint` non vide ne fait pas échouer le rendu. Il vous dit ce qui coû
 
 La même bannière rend depuis le terminal sans écrire un script driver :
 
-<Code lang="sh" code={`npx takumi-motion render launch-banner.tsx --out ./out`} />
+<Code lang="sh" title="Terminal" code={`npx takumi-motion render launch-banner.tsx --out ./out`} />
 
 La CLI accepte `--format gif,webp`, `--budget 800000`, `--filmstrip`, et plus — chaque drapeau est documenté dans la [référence CLI](/reference/cli).
 

@@ -23,13 +23,13 @@ Every cell is rendered by the Rust engine — what you review is what you ship:
 
 <Tabs>
   <TabItem label="6 evenly spaced frames">
-<Code lang="sh" code={` npx takumi-motion render banner.tsx --filmstrip`} />
+<Code lang="sh" title="Terminal" code={` npx takumi-motion render banner.tsx --filmstrip`} />
   </TabItem>
   <TabItem label="Explicit frames">
-<Code lang="sh" code={` npx takumi-motion render banner.tsx --filmstrip 0,15,30`} />
+<Code lang="sh" title="Terminal" code={` npx takumi-motion render banner.tsx --filmstrip 0,15,30`} />
   </TabItem>
   <TabItem label="10 frames">
-<Code lang="sh" code={` npx takumi-motion render banner.tsx --filmstrip 10`} />
+<Code lang="sh" title="Terminal" code={` npx takumi-motion render banner.tsx --filmstrip 10`} />
   </TabItem>
 </Tabs>
 
@@ -37,7 +37,7 @@ The filmstrip is self-contained HTML and byte-deterministic, so it diffs cleanly
 
 ## CSS preview player
 
-<Code lang="sh" code={`npx takumi-motion preview banner.tsx -o banner-preview.html`} />
+<Code lang="sh" title="Terminal" code={`npx takumi-motion preview banner.tsx -o banner-preview.html`} />
 
 The player replays the captured CSS in a browser — good for feeling the motion, approximate for layout. The encoded GIF/WebP remains the source of truth; when they disagree, trust the encoded output.
 
@@ -45,13 +45,13 @@ The player replays the captured CSS in a browser — good for feeling the motion
 
 The storyboard renders a labeled PNG grid of the whole timeline (cells rasterized by the engine — the sheet itself is a takumi document) plus a sidecar JSON with the sampled frame indices:
 
-<Code lang="sh" code={`npx takumi-motion storyboard reel.tsx --frames 12 --columns 4 --out ./qa`} />
+<Code lang="sh" title="Terminal" code={`npx takumi-motion storyboard reel.tsx --frames 12 --columns 4 --out ./qa`} />
 
 Use it to review scene order, transitions, and seam behavior at a glance. Programmatic form: `renderStoryboard` with `{ banner, frames, columns, scale }`.
 
 ## Single stills
 
-<Code lang="sh" code={`npx takumi-motion render banner.tsx --still        # settled frame (~60% of the timeline)
+<Code lang="sh" title="Terminal" code={`npx takumi-motion render banner.tsx --still        # settled frame (~60% of the timeline)
 npx takumi-motion render banner.tsx --still 0      # explicit frame`} />
 
 Looping banners poster and still default to frame 0 — the landing frame. `renderStill` returns `{ png, bytes, path }` and supports all three source paths.

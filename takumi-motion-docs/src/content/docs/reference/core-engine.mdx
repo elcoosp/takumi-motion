@@ -12,9 +12,7 @@ The root export (`takumi-motion`) exposes the authoring and evaluation core. Rea
 
 ### `createTimeline(options?)` → `Timeline`
 
-<Code lang="ts" code={`const timeline = createTimeline({ fps: 20, defaultTransition })
-    .add(target, keyframes, options)
-    .label("intro");`} />
+<Code lang="ts" code={"const timeline = createTimeline({ fps: 20, defaultTransition })\n    .add(target, keyframes, options)\n    .label(\"intro\");"} />
 
 `add(target, keyframes, options?)` accepts partial records of `AnimatableProperty` → keyframes and returns `TimelineTarget` handles. Options:
 
@@ -30,12 +28,7 @@ Default transitions mirror Motion: more than 2 keyframes → tween 800 ms; trans
 
 `Timeline.toJSON()` produces the interchange format every renderer accepts:
 
-<Code lang="ts" code={`interface TimelineJSON {
-    version: 1;
-    durationMs: number;
-    tracks: TrackJSON[];
-    wrap?: { selector: string };
-}`} />
+<Code lang="ts" code={"interface TimelineJSON {\n    version: 1;\n    durationMs: number;\n    tracks: TrackJSON[];\n    wrap?: { selector: string };\n}"} />
 
 ### Transforms
 

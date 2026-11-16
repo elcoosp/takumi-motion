@@ -18,20 +18,19 @@ Dans ce tutoriel vous construisez et rendez une bannière React — le chemin do
 
 Créez un répertoire vide et initialisez un paquet :
 
-<Code lang="sh" title="Terminal" code={`mkdir my-banner && cd my-banner
-pnpm init`} />
+<Code lang="sh" title="Terminal" code={"mkdir my-banner && cd my-banner\npnpm init"} />
 
 Installez `takumi-motion` :
 
 <Tabs>
   <TabItem label="pnpm">
-<Code lang="sh" title="Terminal" code={` pnpm add takumi-motion`} />
+<Code lang="sh" title="Terminal" code={" pnpm add takumi-motion"} />
   </TabItem>
   <TabItem label="npm">
-<Code lang="sh" title="Terminal" code={` npm add takumi-motion`} />
+<Code lang="sh" title="Terminal" code={" npm add takumi-motion"} />
   </TabItem>
   <TabItem label="yarn">
-<Code lang="sh" title="Terminal" code={` yarn add takumi-motion`} />
+<Code lang="sh" title="Terminal" code={" yarn add takumi-motion"} />
   </TabItem>
 </Tabs>
 
@@ -45,40 +44,7 @@ Une bannière est un composant React enveloppé dans `defineBanner`. À l'intér
 
 Créez un fichier nommé `launch-banner.tsx` :
 
-<Code lang="tsx" title="launch-banner.tsx" code={`import { defineBanner, Banner, Scene, Layer } from "takumi-motion/react";
-import { renderReactBanner } from "takumi-motion";
-
-export const launchBanner = defineBanner(function TakumiMotionLaunch() {
-        return (
-    <Banner preset="readme" theme="tokyo-night" transitionMs={250}>
-            <Layer bottom>
-                    <div
-                            style={{
-                                    position: "absolute",
-                                    bottom: 0,
-                                    width: 850,
-                                    height: 3,
-                                    backgroundColor: "#7aa2f7",
-                            }}
-                    />
-            </Layer>
-
-            <Scene duration={100} enter="rise" exit="crossfade">
-                    <h1 style={{ fontSize: 48, fontWeight: 700, color: "#c0caf5" }}>
-                            takumi-motion
-                    </h1>
-            </Scene>
-    </Banner>
-        );
-});
-
-const report = await renderReactBanner({
-        banner: launchBanner,
-        formats: ["webp"],
-        outDir: "./out",
-});
-
-console.log(report.lint);`} />
+<Code lang="tsx" title="launch-banner.tsx" code={"import { defineBanner, Banner, Scene, Layer } from \"takumi-motion/react\";\nimport { renderReactBanner } from \"takumi-motion\";\n\nexport const launchBanner = defineBanner(function TakumiMotionLaunch() {\n        return (\n    <Banner preset=\"readme\" theme=\"tokyo-night\" transitionMs={250}>\n            <Layer bottom>\n                    <div\n                            style={{\n                                    position: \"absolute\",\n                                    bottom: 0,\n                                    width: 850,\n                                    height: 3,\n                                    backgroundColor: \"#7aa2f7\",\n                            }}\n                    />\n            </Layer>\n\n            <Scene duration={100} enter=\"rise\" exit=\"crossfade\">\n                    <h1 style={{ fontSize: 48, fontWeight: 700, color: \"#c0caf5\" }}>\n                            takumi-motion\n                    </h1>\n            </Scene>\n    </Banner>\n        );\n});\n\nconst report = await renderReactBanner({\n        banner: launchBanner,\n        formats: [\"webp\"],\n        outDir: \"./out\",\n});\n\nconsole.log(report.lint);"} />
 
 <Aside type="caution">
   Passez `formats` (un tableau) et `outDir` (un répertoire), pas `format` ni un chemin de fichier. Le renderer choisit les noms de fichiers depuis le preset et le base name.
@@ -94,15 +60,11 @@ Trois détails portent la conception :
 
 Exécutez le fichier avec Node :
 
-<Code lang="sh" title="Terminal" code={`node launch-banner.tsx`} />
+<Code lang="sh" title="Terminal" code={"node launch-banner.tsx"} />
 
 La commande imprime un rapport et écrit `./out/launch-banner.webp` :
 
-<Code lang="json" code={`{
-  "format": "webp",
-  "bytes": 184320,
-  "withinBudget": true
-}`} />
+<Code lang="json" code={"{\n  \"format\": \"webp\",\n  \"bytes\": 184320,\n  \"withinBudget\": true\n}"} />
 
 Ouvrez le fichier dans un navigateur — vous voyez le titre monter, tenir, et sortir en crossfade. Les mêmes octets rendent sur chaque machine et à chaque run.
 
@@ -123,7 +85,7 @@ Un `report.lint` non vide ne fait pas échouer le rendu. Il vous dit ce qui coû
 
 La même bannière rend depuis le terminal sans écrire un script driver :
 
-<Code lang="sh" title="Terminal" code={`npx takumi-motion render launch-banner.tsx --out ./out`} />
+<Code lang="sh" title="Terminal" code={"npx takumi-motion render launch-banner.tsx --out ./out"} />
 
 La CLI accepte `--format gif,webp`, `--budget 800000`, `--filmstrip`, et plus — chaque drapeau est documenté dans la [référence CLI](/reference/cli).
 

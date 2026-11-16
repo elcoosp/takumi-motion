@@ -12,14 +12,11 @@ A looping README badge shows its cut point every few seconds unless the last fra
 
 Declare `loop` on the banner and mark the boundary that closes the circle. Either the first scene enters with `wrap` or the last scene exits with `wrap` — one of the two, never both:
 
-<Code lang="tsx" code={`<Banner loop fps={24}>
-    <Scene duration={90}>…</Scene>
-    <Scene duration={76} exit="wrap">…</Scene>
-</Banner>`} />
+<Code lang="tsx" code={"<Banner loop fps={24}>\n    <Scene duration={90}>\u2026</Scene>\n    <Scene duration={76} exit=\"wrap\">\u2026</Scene>\n</Banner>"} />
 
 `exit="wrap"` appends a crossfade tail into scene 1's frozen frame-0 layer; at the final wrap frame the leaving node drops, so the last frame and frame 0 are byte-identical by construction. The report carries the verdict:
 
-<Code lang="json" code={`{ "seam": { "mode": "exact", "loop": true } }`} />
+<Code lang="json" code={"{ \"seam\": { \"mode\": \"exact\", \"loop\": true } }"} />
 
 <Aside type="caution">
   A `<Banner loop>` without a wrap earns the `TM_LOOP_SEAM` lint pointing at the fix. A `wrap` transition is honored only on the last scene of a looping banner.
@@ -40,15 +37,7 @@ The root export includes four composable utilities:
 
 A complete declarative loop:
 
-<Code lang="ts" code={`import { createTimeline, alignLoopPeriod, fadeWrap, renderBanner } from "takumi-motion";
-
-const timeline = createTimeline({ fps: 20 })
-    .add(node, { y: [0, -12, 0] }, { duration: 1200, repeat: Infinity, repeatType: "mirror" });
-
-const aligned = alignLoopPeriod(timeline);
-const wrapped = fadeWrap(aligned, { selector: "#badge", inMs: 350, outMs: 350 });
-
-const report = await renderBanner({ node, timeline: wrapped, outDir: "./out" });`} />
+<Code lang="ts" code={"import { createTimeline, alignLoopPeriod, fadeWrap, renderBanner } from \"takumi-motion\";\n\nconst timeline = createTimeline({ fps: 20 })\n    .add(node, { y: [0, -12, 0] }, { duration: 1200, repeat: Infinity, repeatType: \"mirror\" });\n\nconst aligned = alignLoopPeriod(timeline);\nconst wrapped = fadeWrap(aligned, { selector: \"#badge\", inMs: 350, outMs: 350 });\n\nconst report = await renderBanner({ node, timeline: wrapped, outDir: \"./out\" });"} />
 
 ## Verify before shipping
 

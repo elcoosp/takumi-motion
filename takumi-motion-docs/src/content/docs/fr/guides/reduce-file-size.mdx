@@ -12,7 +12,7 @@ La taille encodée est delta par frame × frames. Tout dans ce guide attaque un 
 
 La CLI accepte un budget d'octets et négocie le frame rate pour vous :
 
-<Code lang="sh" title="Terminal" code={`npx takumi-motion render banner.tsx --budget 800000 --out ./out`} />
+<Code lang="sh" title="Terminal" code={"npx takumi-motion render banner.tsx --budget 800000 --out ./out"} />
 
 Quand le premier rendu dépasse le budget, l'échelle re-rend à 75 %, puis 50 % du fps (plancher 6 fps, format du premier preset) et garde la première tentative qui tient. La CLI sort avec `2` quand même l'échelle échoue — câblez cela dans la CI comme décrit dans [Portails de qualité](/guides/ci-quality-gates). Programmatiquement la même échelle est `optimizeBudget` depuis l'export racine.
 
@@ -20,16 +20,9 @@ Quand le premier rendu dépasse le budget, l'échelle re-rend à 75 %, puis 50 %
 
 `--explain` (ou `explain: true` sur `renderReactBanner`) attache l'attribution par frame à `report.explain` : chaque frame est classée comme start, hold ou change, et chaque change est attribué à un canal — opacity, transform, clip, layout, paint, text ou structure :
 
-<Code lang="sh" title="Terminal" code={`npx takumi-motion render banner.tsx --explain --json | jq .explain.summary`} />
+<Code lang="sh" title="Terminal" code={"npx takumi-motion render banner.tsx --explain --json | jq .explain.summary"} />
 
-<Code lang="json" code={`{
-  "totalFrames": 180,
-  "uniqueFrames": 96,
-  "holds": 84,
-  "cheapFrames": 52,
-  "churnFrames": 44,
-  "churnRanges": [{ "from": 60, "to": 104 }]
-}`} />
+<Code lang="json" code={"{\n  \"totalFrames\": 180,\n  \"uniqueFrames\": 96,\n  \"holds\": 84,\n  \"cheapFrames\": 52,\n  \"churnFrames\": 44,\n  \"churnRanges\": [{ \"from\": 60, \"to\": 104 }]\n}"} />
 
 Les frames bon marché (opacity, clip) compressent bien. Les frames de churn (layout, text, structure) ré-encodent des régions entières — une plage de churn au milieu d'une scène statique est votre première cible.
 

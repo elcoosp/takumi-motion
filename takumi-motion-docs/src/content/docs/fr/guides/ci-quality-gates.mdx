@@ -21,27 +21,7 @@ La commande `check` rend la bannière une fois et l'audite. Avec `--out` elle é
 
 ## Ajouter un portail GitHub Actions
 
-<Code lang="github-actions" title=".github/workflows/ci.yml" code={`name: banner-quality
-on: [pull_request]
-
-jobs:
-  banners:
- runs-on: ubuntu-latest
- steps:
-   - uses: actions/checkout@v4
-   - uses: pnpm/action-setup@v4
-   - uses: actions/setup-node@v4
-     with:
-       node-version: 22
-       cache: pnpm
-   - run: pnpm install --frozen-lockfile
-   - name: Check banners
-     run: |
-       pnpm exec takumi-motion check src/banners/readme.tsx
-       pnpm exec takumi-motion check src/banners/og.tsx --budget 3000000
-   - name: Render artifact on failure for review
-     if: failure()
-     run: pnpm exec takumi-motion render src/banners/readme.tsx --out ./out`} />
+<Code lang="github-actions" title=".github/workflows/ci.yml" code={"name: banner-quality\non: [pull_request]\n\njobs:\n  banners:\n runs-on: ubuntu-latest\n steps:\n   - uses: actions/checkout@v4\n   - uses: pnpm/action-setup@v4\n   - uses: actions/setup-node@v4\n     with:\n       node-version: 22\n       cache: pnpm\n   - run: pnpm install --frozen-lockfile\n   - name: Check banners\n     run: |\n       pnpm exec takumi-motion check src/banners/readme.tsx\n       pnpm exec takumi-motion check src/banners/og.tsx --budget 3000000\n   - name: Render artifact on failure for review\n     if: failure()\n     run: pnpm exec takumi-motion render src/banners/readme.tsx --out ./out"} />
 
 Le run échoué laisse les fichiers rendus dans `./out` pour upload en tant qu'artefact, donc les relecteurs voient exactement ce qui a fait échouer le portail.
 
@@ -55,19 +35,7 @@ Le run échoué laisse les fichiers rendus dans `./out` pour upload en tant qu'a
 
 Intégrez les mêmes garanties dans votre propre pipeline. `renderWithAudit` rend, audite, et renvoie tout comme JSON :
 
-<Code lang="ts" code={`import { renderWithAudit } from "takumi-motion/audit";
-
-const { report, audit, exitCode, formatted } = await renderWithAudit({
-    banner: MyBanner,
-    preset: "readme",
-    budgetBytes: 2 * 1024 * 1024,
-    outDir: "./out",
-});
-
-if (exitCode !== 0) {
-    console.error(formatted);
-    process.exit(exitCode);
-}`} />
+<Code lang="ts" code={"import { renderWithAudit } from \"takumi-motion/audit\";\n\nconst { report, audit, exitCode, formatted } = await renderWithAudit({\n    banner: MyBanner,\n    preset: \"readme\",\n    budgetBytes: 2 * 1024 * 1024,\n    outDir: \"./out\",\n});\n\nif (exitCode !== 0) {\n    console.error(formatted);\n    process.exit(exitCode);\n}"} />
 
 L'objet `audit` contient `budget` (verdicts par fichier), `extents` (violations avec frame, cible, bord, débordement), `seam`, `warnings`, et un bloc `determinism` — un second rendu complet avec comparaison octet du premier poster. Traitez `audit.deterministic === false` comme une alarme sévère : cela signifie que le pipeline a perdu sa pureté quelque part (un `Math.random` hors du shim, une lecture d'horloge, un fetch réseau).
 

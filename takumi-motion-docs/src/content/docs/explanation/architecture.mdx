@@ -10,12 +10,7 @@ Takumi Motion is a bridge between two worlds: high-level React (or raw HTML) aut
 
 ## The pipeline
 
-<Code lang="text" code={`AUTHOR    React components or templates produce a node tree + TimelineJSON
-PLAN      Scene windows, transitions, and frame grids resolve up front
-CAPTURE   Each frame renders to static markup (pure function of frame index)
-COMPILE   The timeline bakes onto a shared fps grid (CSS keyframes)
-RASTER    The Rust engine (takumi) renders markup + styles to pixels
-ENCODE    GIF / WebP / APNG encoders emit files; post-processing runs`} />
+<Code lang="text" code={"AUTHOR    React components or templates produce a node tree + TimelineJSON\nPLAN      Scene windows, transitions, and frame grids resolve up front\nCAPTURE   Each frame renders to static markup (pure function of frame index)\nCOMPILE   The timeline bakes onto a shared fps grid (CSS keyframes)\nRASTER    The Rust engine (takumi) renders markup + styles to pixels\nENCODE    GIF / WebP / APNG encoders emit files; post-processing runs"} />
 
 Four properties hold everywhere:
 
@@ -34,13 +29,7 @@ flowchart LR
 
 ## Capture lifecycle in detail
 
-<Code lang="text" code={`PROBE    <Banner> registers meta + scene inputs (children do not render yet)
-PLAN     planBanner() computes frame-exact scene windows
-PREWARM  each scene's opening frame renders once (FitText/Morph discovery;
-      outputs are discarded — components may see one extra render per scene)
-FRAMES   the real per-frame loop produces the markup that gets encoded
-CHUNK    byte-identical adjacent frames merge
-LINT     style trees + markup + registry findings assemble report.lint`} />
+<Code lang="text" code={"PROBE    <Banner> registers meta + scene inputs (children do not render yet)\nPLAN     planBanner() computes frame-exact scene windows\nPREWARM  each scene's opening frame renders once (FitText/Morph discovery;\n      outputs are discarded \u2014 components may see one extra render per scene)\nFRAMES   the real per-frame loop produces the markup that gets encoded\nCHUNK    byte-identical adjacent frames merge\nLINT     style trees + markup + registry findings assemble report.lint"} />
 
 The prewarm pass is why `<FitText>` and `<Morph>` can measure through the real renderer and still render synchronously in the frame loop. Prewarm outputs never reach the encoder.
 

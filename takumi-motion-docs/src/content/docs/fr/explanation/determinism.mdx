@@ -32,13 +32,7 @@ L'étape de compilation cuit chaque piste sur une grille fps partagée plus des 
 
 `renderWithAudit` rend deux fois et compare octet pour octet le premier poster :
 
-<Code lang="json" code={`{
-    "determinism": {
-  "deterministic": true,
-  "checkedBytes": 18432,
-  "detail": "poster @ 1500ms byte-identical across renders"
-    }
-}`} />
+<Code lang="json" code={"{\n    \"determinism\": {\n  \"deterministic\": true,\n  \"checkedBytes\": 18432,\n  \"detail\": \"poster @ 1500ms byte-identical across renders\"\n    }\n}"} />
 
 `deterministic: false` est une alarme sévère — cela signifie qu'une entrée a varié entre deux rendus. Les coupables habituels, par ordre de probabilité :
 

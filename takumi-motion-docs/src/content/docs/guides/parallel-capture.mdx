@@ -12,14 +12,7 @@ Frame capture is embarrassingly parallel — each frame is a pure function of `(
 
 Parallel capture requires the banner to be addressable as a module, because each worker imports it independently. Pass `bannerModule` instead of `banner`:
 
-<Code lang="ts" code={`import { renderReactBanner } from "takumi-motion";
-
-const report = await renderReactBanner({
-    bannerModule: "./launch-banner.tsx", // the file's default export
-    workers: "auto",
-    formats: ["webp"],
-    outDir: "./out",
-});`} />
+<Code lang="ts" code={"import { renderReactBanner } from \"takumi-motion\";\n\nconst report = await renderReactBanner({\n    bannerModule: \"./launch-banner.tsx\", // the file's default export\n    workers: \"auto\",\n    formats: [\"webp\"],\n    outDir: \"./out\",\n});"} />
 
 The module path's default export can be a React element, a `defineBanner` component, or a function returning either. The CLI equivalent is `--workers auto` (module banners only).
 
@@ -45,11 +38,7 @@ A numeric `workers: 4` forces the pool (capped at 16 and at the frame count) whe
 
 Debug a range without re-rendering everything:
 
-<Code lang="ts" code={`const report = await renderReactBanner({
-    bannerModule: "./reel.tsx",
-    fromFrame: 120,
-    toFrame: 180,
-});`} />
+<Code lang="ts" code={"const report = await renderReactBanner({\n    bannerModule: \"./reel.tsx\",\n    fromFrame: 120,\n    toFrame: 180,\n});"} />
 
 The CLI pair is `--from 120 --to 180`. The report's `window` block records the range that ran.
 

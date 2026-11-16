@@ -10,12 +10,7 @@ Takumi Motion est un pont entre deux mondes : l'authoring React de haut niveau (
 
 ## Le pipeline
 
-<Code lang="text" code={`AUTHOR    Les composants React ou templates produisent un arbre de nœuds + TimelineJSON
-PLAN      Les fenêtres de scènes, transitions et grilles de frames se résolvent en amont
-CAPTURE   Chaque frame rend en markup statique (fonction pure de l'index de frame)
-COMPILE   La timeline se cuit sur une grille fps partagée (keyframes CSS)
-RASTER    Le moteur Rust (takumi) rend le markup + styles en pixels
-ENCODE    Les encodeurs GIF / WebP / APNG émettent les fichiers ; le post-traitement tourne`} />
+<Code lang="text" code={"AUTHOR    Les composants React ou templates produisent un arbre de n\u0153uds + TimelineJSON\nPLAN      Les fen\u00eatres de sc\u00e8nes, transitions et grilles de frames se r\u00e9solvent en amont\nCAPTURE   Chaque frame rend en markup statique (fonction pure de l'index de frame)\nCOMPILE   La timeline se cuit sur une grille fps partag\u00e9e (keyframes CSS)\nRASTER    Le moteur Rust (takumi) rend le markup + styles en pixels\nENCODE    Les encodeurs GIF / WebP / APNG \u00e9mettent les fichiers ; le post-traitement tourne"} />
 
 Quatre propriétés tiennent partout :
 
@@ -34,13 +29,7 @@ flowchart LR
 
 ## Cycle de capture en détail
 
-<Code lang="text" code={`PROBE    <Banner> enregistre les méta + entrées de scène (les enfants ne rendent pas encore)
-PLAN     planBanner() calcule les fenêtres de scènes exactes à la frame près
-PREWARM  la frame d'ouverture de chaque scène rend une fois (découverte FitText/Morph ;
-      les sorties sont jetées — les composants peuvent voir un rendu supplémentaire par scène)
-FRAMES   la boucle réelle par frame produit le markup qui sera encodé
-CHUNK    les frames adjacentes octet-identiques fusionnent
-LINT     les arbres de style + le markup + les trouvailles de registre assemblent report.lint`} />
+<Code lang="text" code={"PROBE    <Banner> enregistre les m\u00e9ta + entr\u00e9es de sc\u00e8ne (les enfants ne rendent pas encore)\nPLAN     planBanner() calcule les fen\u00eatres de sc\u00e8nes exactes \u00e0 la frame pr\u00e8s\nPREWARM  la frame d'ouverture de chaque sc\u00e8ne rend une fois (d\u00e9couverte FitText/Morph ;\n      les sorties sont jet\u00e9es \u2014 les composants peuvent voir un rendu suppl\u00e9mentaire par sc\u00e8ne)\nFRAMES   la boucle r\u00e9elle par frame produit le markup qui sera encod\u00e9\nCHUNK    les frames adjacentes octet-identiques fusionnent\nLINT     les arbres de style + le markup + les trouvailles de registre assemblent report.lint"} />
 
 La passe de préchauffage est ce qui permet à `<FitText>` et `<Morph>` de mesurer à travers le vrai renderer et de rendre quand même synchroniquement dans la boucle de frames. Les sorties de préchauffage n'atteignent jamais l'encodeur.
 

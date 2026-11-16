@@ -10,21 +10,7 @@ Le moteur accepte du HTML brut comme source de première classe. Utilisez ce che
 
 ## Rendre une chaîne HTML
 
-<Code lang="ts" code={`import { renderHtmlAnimation } from "takumi-motion";
-
-const report = await renderHtmlAnimation({
-        html: \`<div id="badge"><h1>ship it</h1></div>\`,
-        css: \`
-    #badge { display: flex; align-items: center; height: 200px; }
-    h1 { opacity: 0; animation: rise 1.2s ease-out forwards; }
-    @keyframes rise { from { opacity: 0; transform: translateY(-24px); } to { opacity: 1; } }
-        \`,
-        frames: 30,
-        fps: 20,
-        width: 850,
-        height: 200,
-        outDir: "./out",
-});`} />
+<Code lang="ts" code={"import { renderHtmlAnimation } from \"takumi-motion\";\n\nconst report = await renderHtmlAnimation({\n        html: `<div id=\"badge\"><h1>ship it</h1></div>`,\n        css: `\n    #badge { display: flex; align-items: center; height: 200px; }\n    h1 { opacity: 0; animation: rise 1.2s ease-out forwards; }\n    @keyframes rise { from { opacity: 0; transform: translateY(-24px); } to { opacity: 1; } }\n        `,\n        frames: 30,\n        fps: 20,\n        width: 850,\n        height: 200,\n        outDir: \"./out\",\n});"} />
 
 `renderHtmlAnimation` extrait le `<body>` des documents complets (ou prend un fragment), remonte les blocs `<style>`, échantillonne `frames` poses déterministes des animations CSS, et encode les formats du preset. Le rapport porte `cssEntries`, `styleBlocksHoisted`, `files`, `posters`, `fonts` et les champs de budget.
 
@@ -32,7 +18,7 @@ const report = await renderHtmlAnimation({
 
 La commande `render` accepte directement les fichiers `.html` et `.htm` :
 
-<Code lang="sh" title="Terminal" code={`npx takumi-motion render badge.html --css badge.css --font-file Brand.ttf --frames 40 --out ./out`} />
+<Code lang="sh" title="Terminal" code={"npx takumi-motion render badge.html --css badge.css --font-file Brand.ttf --frames 40 --out ./out"} />
 
 | Drapeau | Objet |
 | --- | --- |
@@ -53,10 +39,7 @@ La commande `render` accepte directement les fichiers `.html` et `.htm` :
 
 `renderStill` accepte le même trio de sources — bannière react, html, ou nœud+timeline déclaratif :
 
-<Code lang="ts" code={`import { renderStill } from "takumi-motion";
-
-const still = await renderStill({ html: fragment, css, width: 1200, height: 630 });
-console.log(still.png.length); // octets PNG`} />
+<Code lang="ts" code={"import { renderStill } from \"takumi-motion\";\n\nconst still = await renderStill({ html: fragment, css, width: 1200, height: 630 });\nconsole.log(still.png.length); // octets PNG"} />
 
 ## Étapes suivantes
 

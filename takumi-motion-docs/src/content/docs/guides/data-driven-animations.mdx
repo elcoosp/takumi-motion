@@ -12,21 +12,13 @@ Use this guide when a banner needs to visualize numbers — stars, revenue, late
 
 A network fetch inside a render function is a determinism violation. File reads are fine — they are immutable inputs. Pass data programmatically or through the CLI:
 
-<Code lang="ts" code={`const report = await renderReactBanner({
-    banner: MetricsReel,
-    data: metricsJson,
-});`} />
+<Code lang="ts" code={"const report = await renderReactBanner({\n    banner: MetricsReel,\n    data: metricsJson,\n});"} />
 
-<Code lang="sh" title="Terminal" code={`npx takumi-motion render metrics-reel.tsx --data metrics.json --format webp`} />
+<Code lang="sh" title="Terminal" code={"npx takumi-motion render metrics-reel.tsx --data metrics.json --format webp"} />
 
 Inside the component tree, read the object anywhere with `useChartData`:
 
-<Code lang="tsx" code={`import { useChartData } from "takumi-motion/react";
-
-function Headline() {
-    const data = useChartData<{ stars: number }>();
-    return <span>{data.stars.toLocaleString("en-US")} stars</span>;
-}`} />
+<Code lang="tsx" code={"import { useChartData } from \"takumi-motion/react\";\n\nfunction Headline() {\n    const data = useChartData<{ stars: number }>();\n    return <span>{data.stars.toLocaleString(\"en-US\")} stars</span>;\n}"} />
 
 `useChartData(hint?)` throws with a hint listing registered keys when no channel exists; call `hasChartData()` when you need a quiet check.
 
@@ -34,13 +26,7 @@ function Headline() {
 
 `<LineChart>` builds one static SVG, then sweeps a per-frame `clip-path: inset()` across it — that clip reveal is the draw engine:
 
-<Code lang="tsx" code={`<LineChart
-    data={{ series: [{ name: "rps", color: "#7aa2f7", points: [12, 30, 28, 55, 61, 80] }], labels: ["Jan", "Feb", "Mar"] }}
-    draw="reveal"
-    area
-    grid
-    showPoints
-/>`} />
+<Code lang="tsx" code={"<LineChart\n    data={{ series: [{ name: \"rps\", color: \"#7aa2f7\", points: [12, 30, 28, 55, 61, 80] }], labels: [\"Jan\", \"Feb\", \"Mar\"] }}\n    draw=\"reveal\"\n    area\n    grid\n    showPoints\n/>"} />
 
 Key props: `draw="none"` renders the finished chart (use it for stills), `drawDurationFrames`/`drawDelayFrames` control the sweep, and `yTicks` sets gridline density. Data can arrive via props or the channel — omit the `data` prop and the chart reads `useChartData` itself.
 
@@ -48,16 +34,7 @@ Key props: `draw="none"` renders the finished chart (use it for stills), `drawDu
 
 `<BarChart>` grows bars with staggered closed-form springs; `<Donut>` sweeps a value arc:
 
-<Code lang="tsx" code={`<BarChart
-    data={{ series: [{ name: "downloads", color: "#DF4D24", points: [820, 1240, 980, 1610] }] }}
-    orientation="up"
-    stagger
-    showValues
-/>
-
-<Donut value={0.83} size={140} color="#7aa2f7">
-    <span style={{ fontSize: 24 }}>83%</span>
-</Donut>`} />
+<Code lang="tsx" code={"<BarChart\n    data={{ series: [{ name: \"downloads\", color: \"#DF4D24\", points: [820, 1240, 980, 1610] }] }}\n    orientation=\"up\"\n    stagger\n    showValues\n/>\n\n<Donut value={0.83} size={140} color=\"#7aa2f7\">\n    <span style={{ fontSize: 24 }}>83%</span>\n</Donut>"} />
 
 `<Donut>` validates `value` in the `[0, 1]` range. The default `paint="transform"` sweep is palette-safe for GIF; `paint="conic"` is the gradient alternative but trips the GIF dither lint on 1× surfaces.
 
@@ -65,9 +42,7 @@ Key props: `draw="none"` renders the finished chart (use it for stills), `drawDu
 
 `<CountUp>` accepts a `format` pattern — parsed once, rendered with `tabular-nums` forced on, so digit columns never reflow siblings:
 
-<Code lang="tsx" code={`<CountUp to={4200} durationFrames={40} delayFrames={6} format="$,.0f" />
-<CountUp to={0.962} format=",.1f%" />
-<CountUp to={37} format="ms" />`} />
+<Code lang="tsx" code={"<CountUp to={4200} durationFrames={40} delayFrames={6} format=\"$,.0f\" />\n<CountUp to={0.962} format=\",.1f%\" />\n<CountUp to={37} format=\"ms\" />"} />
 
 Pattern grammar: `[prefix][, grouping][.Nf decimals][suffix]`. Function formers still work: `format={(v) => \`${Math.round(v).toLocaleString("en-US")}+ stars\`}`.
 

@@ -23,13 +23,13 @@ Chaque cellule est rendue par le moteur Rust — ce que vous relisez est ce que 
 
 <Tabs>
   <TabItem label="6 frames régulièrement espacées">
-<Code lang="sh" title="Terminal" code={` npx takumi-motion render banner.tsx --filmstrip`} />
+<Code lang="sh" title="Terminal" code={" npx takumi-motion render banner.tsx --filmstrip"} />
   </TabItem>
   <TabItem label="Frames explicites">
-<Code lang="sh" title="Terminal" code={` npx takumi-motion render banner.tsx --filmstrip 0,15,30`} />
+<Code lang="sh" title="Terminal" code={" npx takumi-motion render banner.tsx --filmstrip 0,15,30"} />
   </TabItem>
   <TabItem label="10 frames">
-<Code lang="sh" title="Terminal" code={` npx takumi-motion render banner.tsx --filmstrip 10`} />
+<Code lang="sh" title="Terminal" code={" npx takumi-motion render banner.tsx --filmstrip 10"} />
   </TabItem>
 </Tabs>
 
@@ -37,7 +37,7 @@ Le filmstrip est un HTML autonome et octet-déterministe, donc il diffe propreme
 
 ## Player d'aperçu CSS
 
-<Code lang="sh" title="Terminal" code={`npx takumi-motion preview banner.tsx -o banner-preview.html`} />
+<Code lang="sh" title="Terminal" code={"npx takumi-motion preview banner.tsx -o banner-preview.html"} />
 
 Le player rejoue le CSS capturé dans un navigateur — bien pour ressentir le mouvement, approximatif pour le layout. Le GIF/WebP encodé reste la source de vérité ; quand ils sont en désaccord, faites confiance à la sortie encodée.
 
@@ -45,14 +45,13 @@ Le player rejoue le CSS capturé dans un navigateur — bien pour ressentir le m
 
 Le storyboard rend une grille PNG étiquetée de toute la timeline (cellules rasterisées par le moteur — la planche elle-même est un document takumi) plus un JSON sidecar avec les indices de frames échantillonnés :
 
-<Code lang="sh" title="Terminal" code={`npx takumi-motion storyboard reel.tsx --frames 12 --columns 4 --out ./qa`} />
+<Code lang="sh" title="Terminal" code={"npx takumi-motion storyboard reel.tsx --frames 12 --columns 4 --out ./qa"} />
 
 Utilisez-le pour relire l'ordre des scènes, les transitions et le comportement de jointure en un coup d'œil. Forme programmatique : `renderStoryboard` avec `{ banner, frames, columns, scale }`.
 
 ## Stills uniques
 
-<Code lang="sh" title="Terminal" code={`npx takumi-motion render banner.tsx --still        # frame reposée (~60% de la timeline)
-npx takumi-motion render banner.tsx --still 0      # frame explicite`} />
+<Code lang="sh" title="Terminal" code={"npx takumi-motion render banner.tsx --still        # frame repos\u00e9e (~60% de la timeline)\nnpx takumi-motion render banner.tsx --still 0      # frame explicite"} />
 
 Les bannières bouclantes poster et still valent par défaut la frame 0 — la frame d'atterrissage. `renderStill` renvoie `{ png, bytes, path }` et supporte les trois chemins de source.
 

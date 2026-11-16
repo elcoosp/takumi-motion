@@ -24,6 +24,14 @@ Four properties hold everywhere:
 - **Rust rasterization** — the takumi engine (via `@takumi-rs/core`, a prebuilt native module) lays out and paints each frame; no headless browser exists in the pipeline.
 - **The report is the API** — every render returns its files, budgets, lint findings, seam verdict, and timings as data.
 
+```mermaid
+flowchart LR
+    AUTH["React / HTML<br/><i>TimelineJSON</i>"] --> PLAN["Planner<br/><i>scene windows & fps grid</i>"]
+    PLAN --> CAP["Capture<br/><i>pure static markup per frame</i>"]
+    CAP --> RAST["Rust Rasterizer<br/><i>@takumi-rs/core</i>"]
+    RAST --> ENC["Encoders<br/><i>GIF · WebP · APNG · PNG</i>"]
+```
+
 ## Capture lifecycle in detail
 
 <Code lang="text" code={`PROBE    <Banner> registers meta + scene inputs (children do not render yet)

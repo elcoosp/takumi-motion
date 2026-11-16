@@ -24,6 +24,14 @@ Quatre propriétés tiennent partout :
 - **Rasterisation Rust** — le moteur takumi (via `@takumi-rs/core`, un module natif précompilé) met en page et peint chaque frame ; aucun navigateur headless n'existe dans le pipeline.
 - **Le rapport est l'API** — chaque rendu renvoie ses fichiers, budgets, trouvailles de lint, verdict de jointure et timings comme données.
 
+```mermaid
+flowchart LR
+    AUTH["React / HTML<br/><i>TimelineJSON</i>"] --> PLAN["Planificateur<br/><i>fenêtres & grille fps</i>"]
+    PLAN --> CAP["Capture<br/><i>markup statique pur par frame</i>"]
+    CAP --> RAST["Rasteriseur Rust<br/><i>@takumi-rs/core</i>"]
+    RAST --> ENC["Encodeurs<br/><i>GIF · WebP · APNG · PNG</i>"]
+```
+
 ## Cycle de capture en détail
 
 <Code lang="text" code={`PROBE    <Banner> enregistre les méta + entrées de scène (les enfants ne rendent pas encore)

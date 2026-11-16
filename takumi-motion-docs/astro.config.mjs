@@ -5,12 +5,10 @@ export default await defineDocsConfig({
   domain: 'takumi-motion.vercel.app',
   title: "Takumi Motion",
   description: "Deterministic server-side animation engine: any React component or raw HTML string becomes a GIF, WebP, APNG, PNG sequence, sprite sheet, or still — rendered by the Rust takumi engine, byte-identical on every run.",
-  sidebar: [],
   extraStarlight: {
       title: 'Takumi Motion',
       description:
         'Deterministic server-side animation engine: any React component or raw HTML string becomes a GIF, WebP, APNG, PNG sequence, sprite sheet, or still — rendered by the Rust takumi engine, byte-identical on every run.',
-      favicon: '/favicon.png',
       social: [
         { icon: 'github', label: 'GitHub', translations: { fr: "GitHub" }, href: 'https://github.com/elcoosp/takumi-motion' },
       ],

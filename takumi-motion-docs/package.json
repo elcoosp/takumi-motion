@@ -2,7 +2,7 @@
   "name": "takumi-motion-docs",
   "version": "1.0.0",
   "private": true,
-  "description": "Official documentation site for takumi-motion \u2014 deterministic server-side animation engine \u2014 built with Astro Starlight.",
+  "description": "Official documentation site for takumi-motion — deterministic server-side animation engine — built with Astro Starlight.",
   "scripts": {
     "dev": "astro/bin/astro.mjs dev",
     "build": "astro build",
@@ -16,7 +16,7 @@
   "dependencies": {
     "@astrojs/starlight": "^0.43.1",
     "@d2lang/d2": "^0.1.34",
-    "@elcoosp/docs-toolkit": "^0.11.3",
+    "@elcoosp/docs-toolkit": "^0.11.4",
     "astro": "^7.4.12",
     "astro-d2": "^0.14.1",
     "linkedom": "^0.18.15",

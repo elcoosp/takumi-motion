@@ -1,0 +1,29 @@
+# Curated domain glossary for @elcoosp/docs-toolkit (starlight-term-glossary)
+- term: "determinism"
+  locale: en
+  href: "/explanation/determinism/"
+  definition: "Guarantee that every frame is a pure function of (frame, props), producing byte-identical output across machines and runs."
+- term: "seeded randomness"
+  locale: en
+  href: "/explanation/determinism/#seeded-randomness"
+  definition: "Deterministic PRNG initialized per render so procedural motion and particles produce byte-identical frames across runs."
+- term: "fps ladder"
+  locale: en
+  href: "/guides/reduce-file-size/"
+  definition: "Automatic frame-rate stepping strategy that lowers output FPS when needed to meet strict animated asset file-size budgets."
+- term: "rasterizer"
+  locale: en
+  href: "/explanation/architecture/"
+  definition: "Native Rust layout and painting backend that renders static per-frame markup trees without launching a headless browser."
+- term: "sprite sheet"
+  locale: en
+  href: "/reference/renderers/"
+  definition: "Grid image packing multiple rendered animation frames into a single PNG atlas for previewing or game/UI playback."
+- term: "déterminisme"
+  locale: fr
+  href: "/fr/explanation/determinism/"
+  definition: "Garantie que chaque frame est une fonction pure produisant exactement les mêmes octets d’une exécution à l’autre."
+- term: "randomisation amorcée"
+  locale: fr
+  href: "/fr/explanation/determinism/"
+  definition: "Générateur pseudo-aléatoire déterministe garantissant des frames strictement identiques au bit près d’un rendu à l’autre."

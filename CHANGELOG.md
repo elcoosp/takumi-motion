@@ -1,5 +1,54 @@
 # takumi-motion — CHANGELOG
 
+## [1.2.0](https://github.com/elcoosp/takumi-motion/compare/v1.1.0...v1.2.0) (2026-11-20)
+
+
+### Features
+
+* **docs:** add precise French sidebar translations ([ebeb2dc](https://github.com/elcoosp/takumi-motion/commit/ebeb2dc0856d6634fb9c20ad9c5fa56464910667))
+* **docs:** add welcome blog post cover image ([f9dc681](https://github.com/elcoosp/takumi-motion/commit/f9dc681fa7c09e66f094b96fbc46990dd1b33f4c))
+* **docs:** complete French sidebar translations ([ee90625](https://github.com/elcoosp/takumi-motion/commit/ee9062554ef81f80e785fdcff0dc056d2bfaa32c))
+* **docs:** enable sidebar topics across docs fleet ([069fdb0](https://github.com/elcoosp/takumi-motion/commit/069fdb02373fd1ac00c94a0f6e66f4b1aa6f06f7))
+* final toolkit sync (auto-expiring announcements, exact anchors) ([1197d95](https://github.com/elcoosp/takumi-motion/commit/1197d9552d79c68f7c6adfe1829fb45c03b3e45d))
+* **home:** migrate to shared DiataxisGrid, unified landing UX, and @elcoosp/docs-toolkit@^1.3.1 ([595c399](https://github.com/elcoosp/takumi-motion/commit/595c399e79065362276db18e6fff90e68ffb1326))
+* **i18n:** add complete French translations ([eb5d54d](https://github.com/elcoosp/takumi-motion/commit/eb5d54d33e2f6b787edcab404bb65b8c512ce61d))
+
+
+### Bug Fixes
+
+* **content:** add blogSchema to docs schema ([aa5e781](https://github.com/elcoosp/takumi-motion/commit/aa5e781b7ffe553c58144fc26c48ebdfb6693376))
+* **docs:** add baseUrl so tsx resolves toolkit stub paths ([c218c51](https://github.com/elcoosp/takumi-motion/commit/c218c51fad4b94cbc61aea1529b3a3c84d1336d8))
+* **docs:** allow astro-takumi git dependency build scripts ([3510e86](https://github.com/elcoosp/takumi-motion/commit/3510e862ffdf074cf3b65bdfa6440d6de6ae03ad))
+* **docs:** correct misplaced quotes in sidebar label ([0d4d895](https://github.com/elcoosp/takumi-motion/commit/0d4d895bab279371bf2fa12bd9a5385edbd0b6da))
+* **docs:** direct validator dep + dead-path links → canonical (no redirects) ([dbb8406](https://github.com/elcoosp/takumi-motion/commit/dbb8406f015a6791b2ec63a279772f19365dc926))
+* **docs:** exclude _meta.yml from docsMetadata glob; strip stale refs ([0cfde3d](https://github.com/elcoosp/takumi-motion/commit/0cfde3d9aa047a58f078f682d7d1150cd6ae1ace))
+* **docs:** remove dangling syntax from astro config ([c88d502](https://github.com/elcoosp/takumi-motion/commit/c88d50233dddbeca5e6c6f034e5e8e064bd5b037))
+* **docs:** remove local link override and pin @elcoosp/docs-toolkit@1.6.8 from npm ([b00ed3e](https://github.com/elcoosp/takumi-motion/commit/b00ed3eadab86fa36682047949e103d24385c0b4))
+* **docs:** resize hero logo to 400px to prevent Starlight cropping ([4291088](https://github.com/elcoosp/takumi-motion/commit/4291088141d68f050c8e2c753966848cbec863af))
+* **docs:** resolve syntax errors and finalize DRY i18n setup ([ef62e5f](https://github.com/elcoosp/takumi-motion/commit/ef62e5fc4d5c0e3dbab21cfd267d32c9b9f4aae0))
+* **docs:** restore i18nLoader import and prebuild copy step ([d6ff440](https://github.com/elcoosp/takumi-motion/commit/d6ff440d1705e55e6eff5490ae8f2e1f4ade6b36))
+* **docs:** set blog post cover to new 16:9 image ([e6dca30](https://github.com/elcoosp/takumi-motion/commit/e6dca3037ee7f42f3b7224188ca3861d63686509))
+* **docs:** toolkit ^0.9.9 (dedupe peer deps, fix layout merge) ([6c4fab8](https://github.com/elcoosp/takumi-motion/commit/6c4fab80f99f2c72bd99586ae63e10faea6c632b))
+* **docs:** upgrade @elcoosp/docs-toolkit to 1.6.8 ([c0fbccc](https://github.com/elcoosp/takumi-motion/commit/c0fbccce9270350523c93e8f99a5f9496f0bf3b8))
+* **docs:** use allowBuilds map for pnpm 12 build scripts ([c2eeb93](https://github.com/elcoosp/takumi-motion/commit/c2eeb9399d2889c14707c119e85a75cee73a261c))
+* **docs:** use correct symlink for i18n and translate sidebar to French ([b0c4e18](https://github.com/elcoosp/takumi-motion/commit/b0c4e181eb94fb369306f8739c0b1c801ae9388e))
+* **pnpm:** exact tarball URL in allowBuilds (pnpm 11 compat) ([b4b7c9c](https://github.com/elcoosp/takumi-motion/commit/b4b7c9ca57e3db4010ca64b275b2ba019a650a4f))
+* **pnpm:** pin pnpm 11.24.0, fix allowBuilds for Vercel ([1e7cdd4](https://github.com/elcoosp/takumi-motion/commit/1e7cdd4523eef745dcb4db02140def22b0986143))
+* **pnpm:** use git+https repo URL in allowBuilds for pnpm 11+ parser ([40ae3b3](https://github.com/elcoosp/takumi-motion/commit/40ae3b37a72b1d4ff663f310644ce6dd71b30481))
+* **pnpm:** use package name for allowBuilds to resolve Vercel pnpm 10 error ([9490697](https://github.com/elcoosp/takumi-motion/commit/9490697462d9f417b884b26e859a2824cb69f380))
+* point starlight-changelogs to ../CHANGELOG.md ([9057507](https://github.com/elcoosp/takumi-motion/commit/905750719b7ec52abde13f6653d8734b7bb4d2b7))
+* **seo:** bump ^0.8.7 + blog date ([4be7603](https://github.com/elcoosp/takumi-motion/commit/4be7603e97ae244625fd8d2dfd02cd3144ee816f))
+* **seo:** final description + title tuning ([6c2f1a4](https://github.com/elcoosp/takumi-motion/commit/6c2f1a412794d6cdffbbaeccddbd6d19adf36912))
+* **sidebar:** configure autoSidebar collection and valid _meta.yml schema ([f542e72](https://github.com/elcoosp/takumi-motion/commit/f542e7206bbb34eb9eb6dc30b62567e84bfe4440))
+* **vercel:** remove rootDirectory from vercel.json, keep installCommand ([db350cc](https://github.com/elcoosp/takumi-motion/commit/db350cc3af8b3ebb051655824c0867973898acfb))
+
+
+### Performance Improvements
+
+* **docs:** resize logo source PNG (LCP fix) ([0e95274](https://github.com/elcoosp/takumi-motion/commit/0e952741b93eb69a904a7c9af016f6b67e3f967c))
+* **docs:** resize logo.png to 512px (LCP fix) ([f1442ea](https://github.com/elcoosp/takumi-motion/commit/f1442ea61689883464503e09d658f862b51a1d8d))
+* **docs:** upgrade @elcoosp/docs-toolkit to 1.6.7 (43kB client search bundle) ([193ddd3](https://github.com/elcoosp/takumi-motion/commit/193ddd3b1dc5f8ade7ed71725e5b4cfdecc25fe3))
+
 ## [1.1.0](https://github.com/elcoosp/takumi-motion/compare/v1.0.6...v1.1.0) (2026-11-11)
 
 

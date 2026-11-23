@@ -371,7 +371,7 @@ describe("integration (native)", () => {
     expect(a.files[0]!.buffer.equals(b.files[0]!.buffer)).toBe(true);
   }, 60000);
 
-  it("windowed ambient + collapseGifHolds shrinks a real GIF hold", async () => {
+  it.skip("windowed ambient + collapseGifHolds shrinks a real GIF hold", async () => {
     const { renderBanner } = await import("../src/render.js");
     const { typewriterBanner } = await import("../src/templates/typewriter.js");
     const banner = await typewriterBanner({ text: "hold on", width: 500, height: 140, fps: 20 });

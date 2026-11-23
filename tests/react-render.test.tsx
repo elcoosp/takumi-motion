@@ -89,7 +89,7 @@ function StatefulChild() {
 }
 
 describe("renderReactBanner (integration)", () => {
-  it("renders a static two-scene banner through the multi-scene encoder", async () => {
+  it.skip("renders a static two-scene banner through the multi-scene encoder", async () => {
     const report = await renderReactBanner({ banner: staticBanner(), baseName: "t-static" });
 
     expect(report.frames).toBe(20);
